@@ -8,7 +8,6 @@
   const statusText = document.getElementById('statusText');
   const qrSection = document.getElementById('qrSection');
   const qrImage = document.getElementById('qrImage');
-  const qrDirectLink = document.getElementById('qrDirectLink');
   const connectedSection = document.getElementById('connectedSection');
   const connectedDeviceName = document.getElementById('connectedDeviceName');
   const activeModeBadge = document.getElementById('activeModeBadge');
@@ -71,8 +70,6 @@
 
           if (msg.qrDataUrl) {
             qrImage.src = msg.qrDataUrl;
-            qrDirectLink.href = msg.phoneUrl;
-            qrDirectLink.textContent = msg.phoneUrl;
           }
 
           if (msg.status === 'connected') {
@@ -90,7 +87,6 @@
           }
         } else if (msg.type === 'waiting_helper') {
           setStatus('waiting', 'Waiting for laptop helper...');
-          qrDirectLink.textContent = msg.message;
         } else if (msg.type === 'pair_request') {
           // Phone scanned QR and wants to connect (shows clean device name only)
           showModal(msg.deviceName);

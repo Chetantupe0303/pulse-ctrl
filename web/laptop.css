@@ -131,19 +131,6 @@ body {
   line-height: 1.5;
 }
 
-.qr-url-link {
-  color: #93c5fd;
-  text-decoration: none;
-  font-size: 12px;
-  margin-top: 8px;
-  word-break: break-all;
-  display: inline-block;
-}
-
-.qr-url-link:hover {
-  text-decoration: underline;
-}
-
 /* Connected details */
 .connected-info {
   display: none;
