@@ -2,3 +2,5 @@ node_modules
 .DS_Store
 Thumbs.db
 *.log
+.pulse-config.json
+.pulse-port

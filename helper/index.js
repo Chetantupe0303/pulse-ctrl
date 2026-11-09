@@ -6,13 +6,17 @@
  */
 
 const { exec } = require('child_process');
+const path = require('path');
+const fs = require('fs');
 const WebSocket = require('ws');
 const { executeEvent } = require('./executor');
 
-const SERVER_HOST = process.env.PULSE_SERVER || 'localhost:3000';
+const CONFIG_FILE = path.join(__dirname, '..', '.pulse-config.json');
+
 let ws = null;
 let currentMode = 'trackpad';
 let currentSessionId = null;
+let reconnectTimer = null;
 
 // Sequential queue to guarantee in-order execution of rapid mouse/keyboard events
 let executionChain = Promise.resolve();
@@ -23,6 +27,27 @@ function queueEvent(event, mode) {
     .catch((err) => {
       console.error('[Helper Queue Error]:', err.message);
     });
+}
+
+/**
+ * Determines target server host and port.
+ * Prioritizes environment variables, then .pulse-config.json, then defaults to localhost:3000.
+ */
+function getServerTarget() {
+  if (process.env.PULSE_SERVER) {
+    return process.env.PULSE_SERVER;
+  }
+
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+      if (config.port) {
+        return `localhost:${config.port}`;
+      }
+    }
+  } catch (_) {}
+
+  return 'localhost:3000';
 }
 
 function openBrowser(url) {
@@ -41,14 +66,15 @@ function openBrowser(url) {
   });
 }
 
-function connect() {
-  const wsUrl = `ws://${SERVER_HOST}/ws?role=helper`;
+function connect(overrideTarget) {
+  const serverTarget = overrideTarget || getServerTarget();
+  const wsUrl = `ws://${serverTarget}/ws?role=helper`;
   console.log(`[Helper] Connecting to PulseCtrl server at ${wsUrl}...`);
 
   ws = new WebSocket(wsUrl);
 
   ws.on('open', () => {
-    console.log('[Helper] Connected to PulseCtrl Server!');
+    console.log(`[Helper] Connected to PulseCtrl Server on ${serverTarget}!`);
   });
 
   ws.on('message', async (data) => {
@@ -57,7 +83,7 @@ function connect() {
 
       if (msg.type === 'session_ready') {
         currentSessionId = msg.sessionId;
-        const port = SERVER_HOST.split(':')[1] || '3000';
+        const port = serverTarget.split(':')[1] || '3000';
         const webUrl = `http://localhost:${port}/?session=${msg.sessionId}`;
 
         console.log('');
@@ -94,13 +120,32 @@ function connect() {
   });
 
   ws.on('close', () => {
-    console.warn('[Helper] Disconnected from server. Reconnecting in 3 seconds...');
-    setTimeout(connect, 3000);
+    scheduleReconnect();
   });
 
   ws.on('error', (err) => {
-    console.error('[Helper] Connection error:', err.message);
+    console.error(`[Helper] Connection error: ${err.message}`);
+
+    // If port 3000 responded with 404 (e.g. hijacked by another app like DevTrack)
+    if (err.message.includes('404') && serverTarget === 'localhost:3000') {
+      console.warn('[Helper] Port 3000 returned 404 (another app is occupying port 3000).');
+      console.warn('[Helper] Probing fallback port 3001...');
+      if (ws) {
+        ws.terminate();
+      }
+      setTimeout(() => connect('localhost:3001'), 1000);
+      return;
+    }
+
+    scheduleReconnect();
   });
+}
+
+function scheduleReconnect() {
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+  reconnectTimer = setTimeout(() => {
+    connect();
+  }, 3000);
 }
 
 connect();

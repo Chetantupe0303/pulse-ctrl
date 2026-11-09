@@ -6,6 +6,7 @@
 const http = require('http');
 const path = require('path');
 const os = require('os');
+const fs = require('fs');
 const express = require('express');
 const { WebSocketServer } = require('ws');
 const QRCode = require('qrcode');
@@ -13,8 +14,9 @@ const QRCode = require('qrcode');
 const { SessionManager } = require('./session');
 const { validateMessage } = require('./validator');
 
-const PORT = parseInt(process.env.PORT || '3000', 10);
+const DEFAULT_PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = process.env.HOST || '0.0.0.0';
+const CONFIG_FILE = path.join(__dirname, '..', '.pulse-config.json');
 
 /**
  * Detects the first non-internal IPv4 LAN address of the host machine.
@@ -32,10 +34,40 @@ function getLocalIpAddress() {
   return 'localhost';
 }
 
+/**
+ * Tests if a specific port is completely free on 127.0.0.1 (not hijacked by another process).
+ */
+function isPortAvailable(port) {
+  return new Promise((resolve) => {
+    const tester = http.createServer();
+    tester.once('error', () => resolve(false));
+    tester.listen(port, '127.0.0.1', () => {
+      tester.close(() => resolve(true));
+    });
+  });
+}
+
+/**
+ * Finds an available port starting from the desired port.
+ */
+async function findAvailablePort(startPort) {
+  let port = startPort;
+  while (port < startPort + 20) {
+    const available = await isPortAvailable(port);
+    if (available) return port;
+    console.warn(`[Server] Port ${port} is occupied by another application. Checking port ${port + 1}...`);
+    port++;
+  }
+  return startPort;
+}
+
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
 const sessionManager = new SessionManager();
+
+// Track current listening port dynamically
+let activePort = DEFAULT_PORT;
 
 // Serve static assets from /web directory
 const webDir = path.join(__dirname, '..', 'web');
@@ -56,9 +88,9 @@ app.get('/api/info', (req, res) => {
   const lanIp = getLocalIpAddress();
   res.json({
     lanIp,
-    port: PORT,
-    localUrl: `http://localhost:${PORT}`,
-    lanUrl: `http://${lanIp}:${PORT}`
+    port: activePort,
+    localUrl: `http://localhost:${activePort}`,
+    lanUrl: `http://${lanIp}:${activePort}`
   });
 });
 
@@ -74,7 +106,7 @@ app.get('/api/session', async (req, res) => {
   }
 
   const lanIp = getLocalIpAddress();
-  const phoneUrl = `http://${lanIp}:${PORT}/phone?session=${session.id}&token=${session.token}`;
+  const phoneUrl = `http://${lanIp}:${activePort}/phone?session=${session.id}&token=${session.token}`;
   const qrDataUrl = await QRCode.toDataURL(phoneUrl, {
     width: 280,
     margin: 2,
@@ -96,7 +128,7 @@ app.get('/api/session', async (req, res) => {
  */
 async function generateQrForSession(sessionId, token) {
   const lanIp = getLocalIpAddress();
-  const phoneUrl = `http://${lanIp}:${PORT}/phone?session=${sessionId}&token=${token}`;
+  const phoneUrl = `http://${lanIp}:${activePort}/phone?session=${sessionId}&token=${token}`;
   const qrDataUrl = await QRCode.toDataURL(phoneUrl, {
     width: 280,
     margin: 2,
@@ -314,16 +346,39 @@ wss.on('connection', async (ws, req) => {
   ws.close(4000, 'Unknown role');
 });
 
-// Only auto-listen if run directly as main script
+// Auto-start server with intelligent port conflict detection
 if (require.main === module) {
-  server.listen(PORT, HOST, () => {
-    const lanIp = getLocalIpAddress();
-    console.log('='.repeat(55));
-    console.log('  PulseCtrl Server is running!');
-    console.log(`  Local:   http://localhost:${PORT}`);
-    console.log(`  Network: http://${lanIp}:${PORT}`);
-    console.log('='.repeat(55));
-  });
+  (async () => {
+    activePort = await findAvailablePort(DEFAULT_PORT);
+
+    server.listen(activePort, HOST, () => {
+      const lanIp = getLocalIpAddress();
+      console.log('');
+      console.log('='.repeat(55));
+      console.log('  ⚡ PulseCtrl Server is running!');
+      console.log(`  Local:   http://localhost:${activePort}`);
+      console.log(`  Network: http://${lanIp}:${activePort}`);
+      console.log('='.repeat(55));
+      console.log('');
+
+      // Persist active configuration for helper and client tools
+      try {
+        fs.writeFileSync(
+          CONFIG_FILE,
+          JSON.stringify({
+            port: activePort,
+            lanIp,
+            localUrl: `http://localhost:${activePort}`,
+            lanUrl: `http://${lanIp}:${activePort}`,
+            updatedAt: Date.now()
+          }, null, 2),
+          'utf8'
+        );
+      } catch (err) {
+        console.warn('[Server] Could not write config file:', err.message);
+      }
+    });
+  })();
 }
 
 module.exports = { app, server, sessionManager, getLocalIpAddress };

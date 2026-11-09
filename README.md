@@ -98,12 +98,12 @@ In terminal 1:
 ```bash
 npm run server
 ```
-The server will start listening on port `3000` (bound to `0.0.0.0`):
+The server will start listening (defaults to port `3000`, and automatically selects `3001` if port 3000 is occupied by another app like DevTrack/Next.js):
 ```
 =======================================================
-  PulseCtrl Server is running!
-  Local:   http://localhost:3000
-  Network: http://192.168.1.5:3000
+  ⚡ PulseCtrl Server is running!
+  Local:   http://localhost:3001
+  Network: http://192.168.1.5:3001
 =======================================================
 ```
 
@@ -112,7 +112,10 @@ In terminal 2:
 ```bash
 npm run helper
 ```
-The helper connects to the server over WebSocket, receives a session, and automatically launches the laptop browser page at `http://localhost:3000/?session=<id>`.
+The helper automatically detects the active server port, connects over WebSocket, receives a session, and automatically launches the laptop browser page. You can also specify an explicit host/port via:
+```bash
+PULSE_SERVER=localhost:3001 npm run helper
+```
 
 ---
 
