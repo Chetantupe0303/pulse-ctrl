@@ -3,21 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PulseCtrl — Wireless Phone Trackpad & Keyboard</title>
+  <title>PulseCtrl — Wireless Trackpad & Keyboard</title>
   <link rel="stylesheet" href="laptop.css">
 </head>
 <body>
   <div class="container">
     <header class="header">
-      <div class="logo-wrap">
-        <div class="logo-icon">⚡</div>
-        <h1 class="brand-title">PulseCtrl</h1>
-      </div>
+      <h1 class="brand-title">PulseCtrl</h1>
       <p class="brand-subtitle">Wireless Trackpad &amp; Keyboard for your Laptop</p>
     </header>
 
     <main class="card">
-      <!-- Status Indicator Pill with Pulse Animation -->
+      <!-- Status Indicator Pill -->
       <div id="statusPill" class="status-pill status-waiting">
         <span class="status-dot"></span>
         <span id="statusText">Waiting for phone</span>
@@ -34,10 +31,10 @@
 
       <!-- Connected State Information -->
       <div id="connectedSection" class="connected-info">
-        <p style="font-size: 15px; margin-bottom: 8px;">Phone is controlling this laptop.</p>
-        <div id="activeModeBadge" class="mode-badge">Mode: Trackpad</div>
+        <p style="font-size: 14px; margin-bottom: 8px; color: var(--text-main);">Phone is connected and controlling this laptop.</p>
+        <div id="activeModeBadge" class="mode-badge">Mode: Mousepad</div>
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
-          Use your phone screen as a wireless trackpad and keyboard.
+          Use your phone screen to move the cursor, click, scroll, and type.
         </p>
       </div>
 

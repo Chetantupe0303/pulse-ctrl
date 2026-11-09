@@ -39,20 +39,21 @@ pulse-ctrl/
 
 - **WhatsApp Web-style QR Pairing**: Scan the QR code displayed on the laptop screen with your phone camera to pair instantly.
 - **Strict Approval Security**: The laptop displays an **"Allow this device?"** prompt with device metadata before any control events can execute.
-- **Trackpad Mode**:
-  - **1-Finger Drag**: Cursor movement throttled to ~60 events/second using `requestAnimationFrame`.
-  - **Single Tap**: Left click.
-  - **Two-Finger Tap**: Right click.
-  - **Two-Finger Drag**: Natural vertical scrolling.
-- **Keyboard Mode**:
-  - Hidden input listening to native `input` events for reliable mobile typing and backspace handling.
-  - Dedicated buttons for **Enter**, **Backspace**, **Tab**, **Esc**, **Space**, **Arrow keys** (↑, ↓, ←, →), and modifier toggles (**Ctrl**, **Alt**, **Shift**).
-- **Both Mode**: Split screen with a responsive touchpad on top and keyboard controls below.
+- **Two Streamlined Modes**:
+  1. **Mousepad Mode**:
+     - **1-Finger Drag**: Smooth cursor movement throttled to 60fps.
+     - **Single Tap**: Left click.
+     - **Two-Finger Tap**: Right click.
+     - **Two-Finger Drag**: Natural vertical scrolling.
+     - **Dedicated Click Buttons**: Physical [Left Click] and [Right Click] buttons for effortless thumb access.
+  2. **Both Mode (Mousepad + Keyboard)**:
+     - Upper area features a fully responsive, dedicated mousepad with touch gestures and physical click buttons.
+     - Lower area displays the typing input bar first, followed by functional navigation keys, an arrow keypad (←, ↑, ↓, →), and modifier toggles (Ctrl, Alt, Shift).
+- **Clean Daily-Use UI**: Minimalist, distraction-free dark interface with no emojis, no glowing neon colors, and no animations.
 - **Mode Permissions**: Strict permission enforcement on both server and helper—events not permitted by the active mode are dropped immediately.
 - **Session Lifecycles**:
   - Automatically expires after **2 minutes** if unpaired.
   - Automatically expires after **15 minutes** of inactivity once paired.
-- **Dark UI with Pulse Animation**: Elegant dark theme with a subtle pulse glow on the connection status indicator.
 
 ---
 

@@ -10,10 +10,7 @@
   <div id="app">
     <!-- Header -->
     <header class="phone-header">
-      <div class="brand-section">
-        <span class="brand-logo">⚡</span>
-        <span class="brand-name">PulseCtrl</span>
-      </div>
+      <div class="brand-title">PulseCtrl</div>
 
       <div id="phoneStatusPill" class="status-pill status-waiting">
         <span class="status-dot"></span>
@@ -23,106 +20,99 @@
       <button id="phoneDisconnectBtn" class="btn-header-disconnect">Disconnect</button>
     </header>
 
-    <!-- Mode Switcher Tabs -->
-    <nav class="mode-tabs">
-      <button class="tab-btn active" data-mode="trackpad">
-        <span>🖱️</span> Trackpad
-      </button>
-      <button class="tab-btn" data-mode="keyboard">
-        <span>⌨️</span> Keyboard
-      </button>
-      <button class="tab-btn" data-mode="both">
-        <span>⚡</span> Both
-      </button>
+    <!-- 2-Mode Segmented Switcher -->
+    <nav class="mode-segmented-wrap">
+      <div class="segmented-control">
+        <button class="tab-btn active" data-mode="trackpad">Mousepad</button>
+        <button class="tab-btn" data-mode="both">Both</button>
+      </div>
     </nav>
 
-    <!-- Hidden text input for native mobile keyboard -->
-    <input type="text" id="nativeKeyboardInput" class="hidden-text-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+    <!-- Hidden text input for native mobile keyboard input event capturing -->
+    <input type="text" id="nativeKeyboardInput" style="position:absolute; opacity:0; pointer-events:none; left:-9999px;" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
 
-    <!-- Content Area with 3 Modes -->
+    <!-- Content Area with 2 Modes -->
     <main class="content-area">
-      <!-- 1. Trackpad Panel -->
+      <!-- 1. Mousepad Full Screen -->
       <section id="panelTrackpad" class="view-panel active">
-        <div id="touchSurface" class="trackpad-surface">
-          <div class="trackpad-hint">
-            <strong>Touchpad</strong><br>
-            1 finger drag: Move cursor<br>
-            1 finger tap: Left click<br>
-            2 finger tap: Right click<br>
-            2 finger drag: Scroll
+        <div class="mousepad-full-container">
+          <div id="touchSurfaceFull" class="trackpad-surface">
+            <div class="trackpad-guide"></div>
+            <div class="trackpad-hint">
+              Drag to move cursor<br>
+              1-finger tap: left click<br>
+              2-finger tap: right click<br>
+              2-finger drag: scroll
+            </div>
+          </div>
+          <div class="click-bar">
+            <button class="btn-click" id="btnLeftClick">Left Click</button>
+            <button class="btn-click" id="btnRightClick">Right Click</button>
           </div>
         </div>
       </section>
 
-      <!-- 2. Keyboard Panel -->
-      <section id="panelKeyboard" class="view-panel">
-        <div class="keyboard-container">
-          <div class="keyboard-trigger-card">
-            <button id="btnOpenKeyboard" class="btn-open-keyboard">
-              <span>⌨️</span> Tap to type with phone keyboard
-            </button>
-          </div>
-
-          <div class="key-grid-title">Special Keys</div>
-          <div class="key-grid">
-            <button class="key-btn" data-key="Escape">Esc</button>
-            <button class="key-btn" data-key="Tab">Tab</button>
-            <button class="key-btn key-span-2" data-key="Backspace">⌫ Backspace</button>
-
-            <button class="key-btn key-span-2" data-key="Enter">⏎ Enter</button>
-            <button class="key-btn" data-key="ArrowUp">↑</button>
-            <button class="key-btn modifier" data-modifier="Shift">Shift</button>
-
-            <button class="key-btn" data-key="ArrowLeft">←</button>
-            <button class="key-btn" data-key="ArrowDown">↓</button>
-            <button class="key-btn" data-key="ArrowRight">→</button>
-            <button class="key-btn modifier" data-modifier="Control">Ctrl</button>
-
-            <button class="key-btn modifier key-span-2" data-modifier="Alt">Alt</button>
-            <button class="key-btn key-span-2" data-key="Space">Space</button>
-          </div>
-        </div>
-      </section>
-
-      <!-- 3. Both Panel -->
+      <!-- 2. Both Mode: Mousepad on Top, Keyboard & Arrows Below -->
       <section id="panelBoth" class="view-panel">
-        <div class="both-layout">
-          <div class="both-trackpad-wrap">
+        <div class="both-container">
+          <!-- Upper Half: Fully Working Mousepad Surface -->
+          <div class="both-trackpad-half">
             <div id="touchSurfaceBoth" class="trackpad-surface">
+              <div class="trackpad-guide"></div>
               <div class="trackpad-hint">
-                <strong>Trackpad Area</strong><br>
+                Mousepad<br>
                 Drag to move • Tap to click
               </div>
             </div>
+            <div class="click-bar" style="height: 38px;">
+              <button class="btn-click" id="btnLeftClickBoth" style="font-size: 12px;">Left Click</button>
+              <button class="btn-click" id="btnRightClickBoth" style="font-size: 12px;">Right Click</button>
+            </div>
           </div>
-          <div class="both-keyboard-wrap">
-            <button id="btnOpenKeyboardBoth" class="btn-open-keyboard" style="padding: 10px; margin-bottom: 8px; font-size: 13px;">
-              <span>⌨️</span> Tap to type
-            </button>
-            <div class="key-grid" style="margin-bottom: 0;">
-              <button class="key-btn" data-key="Escape">Esc</button>
-              <button class="key-btn" data-key="Tab">Tab</button>
-              <button class="key-btn key-span-2" data-key="Backspace">⌫</button>
 
-              <button class="key-btn key-span-2" data-key="Enter">⏎ Enter</button>
-              <button class="key-btn" data-key="ArrowUp">↑</button>
-              <button class="key-btn modifier" data-modifier="Shift">Shift</button>
+          <!-- Lower Half: Keyboard First, Then Arrows & Special Keys -->
+          <div class="both-controls-half">
+            <!-- 1. Keyboard Typing Row Shown First -->
+            <div class="typing-row">
+              <input type="text" id="bothTextInput" class="typing-input" placeholder="Type text here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+              <button id="btnBothSend" class="btn-type-action">Send</button>
+              <button id="btnBothBackspace" class="btn-type-action">⌫</button>
+            </div>
 
-              <button class="key-btn" data-key="ArrowLeft">←</button>
-              <button class="key-btn" data-key="ArrowDown">↓</button>
-              <button class="key-btn" data-key="ArrowRight">→</button>
-              <button class="key-btn modifier" data-modifier="Control">Ctrl</button>
+            <!-- 2. Keys Section: Functional, Arrow & Modifier Keys -->
+            <div class="keys-section">
+              <!-- Functional Row -->
+              <div class="key-row">
+                <button class="key-btn" data-key="Escape">Esc</button>
+                <button class="key-btn" data-key="Tab">Tab</button>
+                <button class="key-btn key-span-2" data-key="Enter">Enter</button>
+                <button class="key-btn" data-key="Space">Space</button>
+              </div>
+
+              <!-- Directional Arrow Row -->
+              <div class="key-row">
+                <button class="key-btn key-arrow" data-key="ArrowLeft">←</button>
+                <button class="key-btn key-arrow" data-key="ArrowUp">↑</button>
+                <button class="key-btn key-arrow" data-key="ArrowDown">↓</button>
+                <button class="key-btn key-arrow" data-key="ArrowRight">→</button>
+              </div>
+
+              <!-- Modifiers Row -->
+              <div class="key-row">
+                <button class="key-btn modifier" data-modifier="Control">Ctrl</button>
+                <button class="key-btn modifier" data-modifier="Alt">Alt</button>
+                <button class="key-btn modifier" data-modifier="Shift">Shift</button>
+              </div>
             </div>
           </div>
         </div>
       </section>
     </main>
 
-    <!-- Overlay Screen: Waiting for approval, disconnected, or error -->
+    <!-- Overlay Screen: Minimal, Non-animated -->
     <div id="overlayScreen" class="overlay-screen">
-      <div id="overlayIcon" class="overlay-icon">⏳</div>
       <h2 id="overlayTitle" class="overlay-title">Connecting...</h2>
-      <p id="overlayDesc" class="overlay-desc">Please wait while pairing with your laptop.</p>
+      <p id="overlayDesc" class="overlay-desc">Contacting laptop server...</p>
     </div>
   </div>
 

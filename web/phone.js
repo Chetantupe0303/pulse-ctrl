@@ -1,7 +1,7 @@
 /**
  * PulseCtrl - Phone Client Controller
- * Manages WebSocket pairing, mode tabs, touch gestures (60fps drag, tap left/right, 2-finger scroll),
- * and mobile keyboard input.
+ * Clean, minimal, utility-focused wireless trackpad & keyboard engine.
+ * Supports 2 modes: Mousepad and Both (Mousepad + Keyboard).
  */
 
 (function () {
@@ -14,25 +14,22 @@
   const statusText = document.getElementById('phoneStatusText');
   const disconnectBtn = document.getElementById('phoneDisconnectBtn');
   const overlayScreen = document.getElementById('overlayScreen');
-  const overlayIcon = document.getElementById('overlayIcon');
   const overlayTitle = document.getElementById('overlayTitle');
   const overlayDesc = document.getElementById('overlayDesc');
 
   // Mode panels & tabs
   const tabButtons = document.querySelectorAll('.tab-btn');
   const panelTrackpad = document.getElementById('panelTrackpad');
-  const panelKeyboard = document.getElementById('panelKeyboard');
   const panelBoth = document.getElementById('panelBoth');
   const panels = {
     trackpad: panelTrackpad,
-    keyboard: panelKeyboard,
     both: panelBoth
   };
 
-  // Input & keyboard elements
-  const nativeKeyboardInput = document.getElementById('nativeKeyboardInput');
-  const btnOpenKeyboard = document.getElementById('btnOpenKeyboard');
-  const btnOpenKeyboardBoth = document.getElementById('btnOpenKeyboardBoth');
+  // Typing elements in Both mode
+  const bothTextInput = document.getElementById('bothTextInput');
+  const btnBothSend = document.getElementById('btnBothSend');
+  const btnBothBackspace = document.getElementById('btnBothBackspace');
 
   let ws = null;
   let isPaired = false;
@@ -47,8 +44,7 @@
     statusText.textContent = text;
   }
 
-  function showOverlay(icon, title, desc) {
-    overlayIcon.textContent = icon;
+  function showOverlay(title, desc) {
     overlayTitle.textContent = title;
     overlayDesc.textContent = desc;
     overlayScreen.classList.remove('hidden');
@@ -59,7 +55,7 @@
   }
 
   if (!sessionId || !token) {
-    showOverlay('❌', 'Invalid Link', 'Missing session ID or security token. Please scan the QR code again.');
+    showOverlay('Invalid Link', 'Missing session ID or security token. Please scan the QR code on your laptop.');
     setStatus('disconnected', 'Invalid QR');
     return;
   }
@@ -69,14 +65,13 @@
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws?role=phone&session=${encodeURIComponent(sessionId)}&token=${encodeURIComponent(token)}`;
 
-    showOverlay('⏳', 'Connecting...', 'Contacting laptop server...');
+    showOverlay('Connecting...', 'Contacting laptop server...');
     setStatus('waiting', 'Connecting');
 
     ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-      console.log('[Phone] Connected to WebSocket');
-      showOverlay('⏳', 'Waiting for Laptop', 'Please look at your laptop screen and click "Allow".');
+      showOverlay('Waiting for Approval', 'Please click "Allow" on your laptop screen.');
       setStatus('waiting', 'Awaiting approval');
     };
 
@@ -85,43 +80,42 @@
         const msg = JSON.parse(event.data);
 
         if (msg.type === 'waiting_approval') {
-          showOverlay('⏳', 'Waiting for Laptop', 'Please click "Allow" on your laptop screen.');
+          showOverlay('Waiting for Approval', 'Please click "Allow" on your laptop screen.');
           setStatus('waiting', 'Awaiting approval');
         } else if (msg.type === 'paired') {
           isPaired = true;
           hideOverlay();
           setStatus('connected', 'Connected');
           if (msg.mode) {
-            setMode(msg.mode, false);
+            setMode(msg.mode === 'both' ? 'both' : 'trackpad', false);
           }
         } else if (msg.type === 'denied') {
           isPaired = false;
-          showOverlay('🚫', 'Connection Denied', 'The laptop user denied access.');
+          showOverlay('Connection Denied', 'The laptop user denied access.');
           setStatus('disconnected', 'Denied');
         } else if (msg.type === 'status' && msg.status === 'disconnected') {
           isPaired = false;
-          showOverlay('🔌', 'Disconnected', msg.message || 'Connection was closed.');
+          showOverlay('Disconnected', msg.message || 'Connection was closed.');
           setStatus('disconnected', 'Disconnected');
         } else if (msg.type === 'expired') {
           isPaired = false;
-          showOverlay('⏰', 'Session Expired', msg.message || 'Session expired.');
+          showOverlay('Session Expired', msg.message || 'Session timed out.');
           setStatus('disconnected', 'Expired');
         } else if (msg.type === 'error') {
           isPaired = false;
-          showOverlay('⚠️', 'Pairing Error', msg.message || 'Unable to pair with laptop.');
+          showOverlay('Connection Error', msg.message || 'Unable to pair with laptop.');
           setStatus('disconnected', 'Error');
         } else if (msg.type === 'mode') {
-          setMode(msg.value, false);
+          setMode(msg.value === 'both' ? 'both' : 'trackpad', false);
         }
       } catch (e) {
         console.error('[Phone] Parse error:', e);
       }
     };
 
-    ws.onclose = (event) => {
-      console.warn('[Phone] Connection closed:', event.code, event.reason);
+    ws.onclose = () => {
       if (isPaired) {
-        showOverlay('🔌', 'Disconnected', 'Lost connection to laptop.');
+        showOverlay('Disconnected', 'Lost connection to laptop.');
         setStatus('disconnected', 'Disconnected');
       }
       isPaired = false;
@@ -144,16 +138,16 @@
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'disconnect' }));
     }
-    showOverlay('🔌', 'Disconnected', 'You disconnected from the laptop.');
+    showOverlay('Disconnected', 'You disconnected from the laptop.');
     setStatus('disconnected', 'Disconnected');
   });
 
-  // Mode switching
+  // 2-Mode switching (Mousepad vs Both)
   function setMode(mode, notifyServer = true) {
-    currentMode = mode;
+    currentMode = mode === 'both' ? 'both' : 'trackpad';
 
     tabButtons.forEach(btn => {
-      if (btn.dataset.mode === mode) {
+      if (btn.dataset.mode === currentMode) {
         btn.classList.add('active');
       } else {
         btn.classList.remove('active');
@@ -161,7 +155,7 @@
     });
 
     Object.keys(panels).forEach(key => {
-      if (key === mode) {
+      if (key === currentMode) {
         panels[key].classList.add('active');
       } else {
         panels[key].classList.remove('active');
@@ -169,7 +163,7 @@
     });
 
     if (notifyServer) {
-      send({ type: 'mode', value: mode });
+      send({ type: 'mode', value: currentMode });
     }
   }
 
@@ -183,32 +177,27 @@
   });
 
   // -------------------------------------------------------------
-  // TRACKPAD GESTURES ENGINE (60 FPS Throttling & Multi-Touch)
+  // MOUSEPAD ENGINE (Ultra-responsive, 60fps, rock-solid deltas)
   // -------------------------------------------------------------
   function setupTrackpadSurface(element) {
     if (!element) return;
 
     let touchStartTime = 0;
     let maxTouchCount = 0;
-    let initialTouchX = 0;
-    let initialTouchY = 0;
     let lastX = 0;
     let lastY = 0;
+    let initialTouchX = 0;
+    let initialTouchY = 0;
     let lastScrollY = 0;
     let hasMoved = false;
 
-    // Movement delta accumulator for 60fps dispatch
     let pendingDx = 0;
     let pendingDy = 0;
     let pendingScrollDy = 0;
-    let rafScheduled = false;
-    let lastFlushTime = 0;
+    let lastSendTime = 0;
 
     function flushDeltas() {
-      rafScheduled = false;
-
       if (pendingDx !== 0 || pendingDy !== 0) {
-        // Send small relative deltas throttled to ~60 per second
         send({
           type: 'move',
           dx: Math.round(pendingDx),
@@ -227,19 +216,11 @@
       }
     }
 
-    function scheduleFlush() {
-      if (!rafScheduled) {
-        rafScheduled = true;
-        requestAnimationFrame((now) => {
-          rafScheduled = false;
-          // Strictly throttle to ~60fps (16ms interval)
-          if (now - lastFlushTime >= 15) {
-            lastFlushTime = now;
-            flushDeltas();
-          } else {
-            scheduleFlush();
-          }
-        });
+    function checkThrottle() {
+      const now = performance.now();
+      if (now - lastSendTime >= 15) { // ~60 FPS
+        lastSendTime = now;
+        flushDeltas();
       }
     }
 
@@ -259,12 +240,11 @@
     }, { passive: false });
 
     element.addEventListener('touchmove', (e) => {
-      e.preventDefault(); // Prevent native browser pull-to-refresh or panning
-
+      e.preventDefault(); // Stop native scrolling & bounce
       maxTouchCount = Math.max(maxTouchCount, e.touches.length);
 
       if (e.touches.length === 1) {
-        // 1-finger cursor movement
+        // 1-finger mouse movement
         const currentX = e.touches[0].clientX;
         const currentY = e.touches[0].clientY;
 
@@ -274,45 +254,42 @@
         lastX = currentX;
         lastY = currentY;
 
-        if (Math.hypot(currentX - initialTouchX, currentY - initialTouchY) > 5) {
+        if (Math.abs(currentX - initialTouchX) > 4 || Math.abs(currentY - initialTouchY) > 4) {
           hasMoved = true;
         }
 
-        // Apply smooth sensitivity multiplier
+        // Apply smooth trackpad sensitivity
         pendingDx += dx * 1.5;
         pendingDy += dy * 1.5;
-        scheduleFlush();
+        checkThrottle();
 
       } else if (e.touches.length === 2) {
-        // 2-finger scroll
+        // 2-finger vertical scroll
         const currentScrollY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
         const scrollDelta = currentScrollY - lastScrollY;
         lastScrollY = currentScrollY;
 
         hasMoved = true;
 
-        // Invert scroll delta for natural scrolling feel
-        pendingScrollDy += -scrollDelta * 1.2;
-        scheduleFlush();
+        pendingScrollDy += -scrollDelta * 1.4;
+        checkThrottle();
       }
     }, { passive: false });
 
     element.addEventListener('touchend', (e) => {
       const elapsed = Date.now() - touchStartTime;
 
-      // Handle taps if fingers did not drag
-      if (!hasMoved && elapsed < 320) {
+      // Tap detection (single-finger = left click, two-finger = right click)
+      if (!hasMoved && elapsed < 350) {
         if (maxTouchCount === 1) {
-          // Single tap = left click
           send({ type: 'click', button: 'left' });
         } else if (maxTouchCount === 2) {
-          // Two-finger tap = right click
           send({ type: 'click', button: 'right' });
         }
       }
 
       if (e.touches.length === 0) {
-        // All fingers lifted, flush any remaining movement and reset
+        // Flush remaining deltas when fingers lift
         flushDeltas();
         maxTouchCount = 0;
       }
@@ -326,61 +303,92 @@
     });
   }
 
-  setupTrackpadSurface(document.getElementById('touchSurface'));
+  // Initialize both touch surfaces
+  setupTrackpadSurface(document.getElementById('touchSurfaceFull'));
   setupTrackpadSurface(document.getElementById('touchSurfaceBoth'));
 
+  // Physical Left / Right click buttons
+  function bindClickButtons(leftId, rightId) {
+    const btnLeft = document.getElementById(leftId);
+    const btnRight = document.getElementById(rightId);
+
+    if (btnLeft) {
+      btnLeft.addEventListener('click', (e) => {
+        e.preventDefault();
+        send({ type: 'click', button: 'left' });
+      });
+    }
+    if (btnRight) {
+      btnRight.addEventListener('click', (e) => {
+        e.preventDefault();
+        send({ type: 'click', button: 'right' });
+      });
+    }
+  }
+
+  bindClickButtons('btnLeftClick', 'btnRightClick');
+  bindClickButtons('btnLeftClickBoth', 'btnRightClickBoth');
+
   // -------------------------------------------------------------
-  // KEYBOARD ENGINE
+  // KEYBOARD & INPUT ENGINE (Both Mode)
   // -------------------------------------------------------------
-  function triggerNativeKeyboard() {
-    nativeKeyboardInput.value = '';
-    nativeKeyboardInput.focus();
+  if (bothTextInput) {
+    // Stream characters directly on input event (reliable on mobile virtual keyboards)
+    bothTextInput.addEventListener('input', (e) => {
+      const inputType = e.inputType;
+      const val = e.data || bothTextInput.value;
+
+      if (inputType === 'deleteContentBackward' || (!bothTextInput.value && inputType === 'deleteWordBackward')) {
+        send({
+          type: 'key',
+          key: 'Backspace',
+          modifiers: Array.from(activeModifiers)
+        });
+      } else if (val) {
+        send({
+          type: 'text',
+          value: val
+        });
+      }
+
+      // Reset value so next keystroke is captured freshly
+      bothTextInput.value = '';
+    });
+
+    bothTextInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        send({
+          type: 'key',
+          key: 'Enter',
+          modifiers: Array.from(activeModifiers)
+        });
+        e.preventDefault();
+      }
+    });
   }
 
-  if (btnOpenKeyboard) {
-    btnOpenKeyboard.addEventListener('click', triggerNativeKeyboard);
-  }
-  if (btnOpenKeyboardBoth) {
-    btnOpenKeyboardBoth.addEventListener('click', triggerNativeKeyboard);
+  if (btnBothSend) {
+    btnBothSend.addEventListener('click', () => {
+      if (bothTextInput.value) {
+        send({ type: 'text', value: bothTextInput.value });
+        bothTextInput.value = '';
+      } else {
+        send({ type: 'key', key: 'Enter', modifiers: Array.from(activeModifiers) });
+      }
+    });
   }
 
-  // Listen to "input" event (more reliable than keydown on mobile browsers)
-  nativeKeyboardInput.addEventListener('input', (e) => {
-    const inputType = e.inputType;
-    const value = e.data || nativeKeyboardInput.value;
-
-    if (inputType === 'deleteContentBackward' || (!nativeKeyboardInput.value && inputType === 'deleteWordBackward')) {
-      // User tapped mobile backspace
+  if (btnBothBackspace) {
+    btnBothBackspace.addEventListener('click', () => {
       send({
         type: 'key',
         key: 'Backspace',
         modifiers: Array.from(activeModifiers)
       });
-    } else if (value) {
-      // User typed characters
-      send({
-        type: 'text',
-        value: value
-      });
-    }
+    });
+  }
 
-    // Reset input value to allow continuous input detection
-    nativeKeyboardInput.value = '';
-  });
-
-  // Fallback for enter key on mobile virtual keyboards
-  nativeKeyboardInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      send({
-        type: 'key',
-        key: 'Enter',
-        modifiers: Array.from(activeModifiers)
-      });
-      e.preventDefault();
-    }
-  });
-
-  // Special key buttons (Enter, Backspace, Tab, Esc, Arrows, Space)
+  // Special keys & Arrow buttons (Escape, Tab, Enter, Space, Arrows)
   document.querySelectorAll('.key-btn[data-key]').forEach(btn => {
     btn.addEventListener('click', () => {
       const keyName = btn.dataset.key;
@@ -390,7 +398,7 @@
         modifiers: Array.from(activeModifiers)
       });
 
-      // Clear modifiers after executing combination unless held
+      // Clear modifiers after executing combination unless toggled again
       if (activeModifiers.size > 0) {
         activeModifiers.clear();
         document.querySelectorAll('.key-btn.modifier').forEach(m => m.classList.remove('active'));

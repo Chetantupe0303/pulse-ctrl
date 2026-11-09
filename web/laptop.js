@@ -87,7 +87,8 @@
           }
 
           if (msg.mode) {
-            activeModeBadge.textContent = 'Mode: ' + msg.mode.toUpperCase();
+            const modeLabel = msg.mode === 'trackpad' ? 'Mousepad' : (msg.mode === 'both' ? 'Both' : msg.mode);
+            activeModeBadge.textContent = 'Mode: ' + modeLabel;
           }
         } else if (msg.type === 'waiting_helper') {
           setStatus('waiting', 'Waiting for laptop helper...');
@@ -107,7 +108,8 @@
             setStatus('disconnected', msg.message || 'Disconnected');
           }
         } else if (msg.type === 'mode') {
-          activeModeBadge.textContent = 'Mode: ' + msg.value.toUpperCase();
+          const modeLabel = msg.value === 'trackpad' ? 'Mousepad' : (msg.value === 'both' ? 'Both' : msg.value);
+          activeModeBadge.textContent = 'Mode: ' + modeLabel;
         } else if (msg.type === 'expired') {
           hideModal();
           setStatus('disconnected', msg.message || 'Session expired');

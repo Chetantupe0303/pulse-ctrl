@@ -1,16 +1,18 @@
-/* PulseCtrl - Phone Mobile-First UI Theme & Styling */
+/* PulseCtrl - Phone Mobile UI (Clean, Minimal, Utility-First) */
 :root {
-  --bg-color: #0b0f17;
-  --surface-bg: #131b26;
-  --surface-border: #1f2c3d;
-  --text-main: #f1f5f9;
-  --text-muted: #94a3b8;
-  --accent-cyan: #00f2fe;
-  --accent-blue: #4facfe;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --trackpad-bg: #0f1622;
+  --bg-color: #0d0f14;
+  --surface-bg: #141720;
+  --surface-border: #222634;
+  --surface-btn: #1c202c;
+  --surface-btn-active: #2b3142;
+  --text-main: #f3f4f6;
+  --text-muted: #8b92a5;
+  --text-subtle: #4e5567;
+  --accent: #2563eb;
+  --accent-active: #1d4ed8;
+  --status-connected: #22c55e;
+  --status-waiting: #eab308;
+  --status-disconnected: #ef4444;
   --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -32,6 +34,7 @@ html, body {
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
+  -webkit-font-smoothing: antialiased;
 }
 
 #app {
@@ -44,106 +47,86 @@ html, body {
 
 /* Header */
 .phone-header {
-  height: 52px;
+  height: 48px;
   background: var(--surface-bg);
   border-bottom: 1px solid var(--surface-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 14px;
+  padding: 0 12px;
   flex-shrink: 0;
   z-index: 10;
 }
 
-.brand-section {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.brand-logo {
-  font-size: 16px;
-}
-
-.brand-name {
-  font-size: 16px;
-  font-weight: 700;
+.brand-title {
+  font-size: 15px;
+  font-weight: 600;
   letter-spacing: -0.3px;
-  background: linear-gradient(135deg, #ffffff, #cbd5e1);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #ffffff;
 }
 
 .status-pill {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0f1118;
+  border: 1px solid var(--surface-border);
   padding: 4px 10px;
-  border-radius: 9999px;
+  border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
+  color: var(--text-main);
 }
 
 .status-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background-color: var(--text-muted);
+  background-color: var(--text-subtle);
 }
 
 .status-waiting .status-dot {
-  background-color: var(--warning);
-  box-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
+  background-color: var(--status-waiting);
 }
 
 .status-connected .status-dot {
-  background-color: var(--success);
-  animation: phone-pulse 2s infinite ease-in-out;
+  background-color: var(--status-connected);
 }
 
 .status-disconnected .status-dot {
-  background-color: var(--danger);
-}
-
-@keyframes phone-pulse {
-  0% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
-  }
-  70% {
-    transform: scale(1.05);
-    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
-  }
-  100% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-  }
+  background-color: var(--status-disconnected);
 }
 
 .btn-header-disconnect {
   background: transparent;
-  border: 1px solid rgba(239, 68, 68, 0.4);
+  border: 1px solid #451a1a;
   color: #fca5a5;
   font-size: 11px;
   padding: 5px 10px;
-  border-radius: 6px;
-  font-weight: 600;
+  border-radius: 4px;
+  font-weight: 500;
   cursor: pointer;
+  font-family: inherit;
 }
 
 .btn-header-disconnect:active {
-  background: rgba(239, 68, 68, 0.2);
+  background: #2d1818;
 }
 
-/* Mode Switcher Tabs */
-.mode-tabs {
-  height: 44px;
-  background: rgba(19, 27, 38, 0.7);
-  display: flex;
+/* 2-Mode Segmented Switcher */
+.mode-segmented-wrap {
+  padding: 6px 12px;
+  background: var(--surface-bg);
   border-bottom: 1px solid var(--surface-border);
   flex-shrink: 0;
+}
+
+.segmented-control {
+  display: flex;
+  background: #0c0e13;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  padding: 2px;
 }
 
 .tab-btn {
@@ -152,31 +135,18 @@ html, body {
   border: none;
   color: var(--text-muted);
   font-size: 13px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
+  font-weight: 500;
+  padding: 6px 0;
+  border-radius: 4px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
   font-family: inherit;
+  transition: background 0.15s ease, color 0.15s ease;
+  text-align: center;
 }
 
 .tab-btn.active {
-  color: var(--accent-cyan);
-}
-
-.tab-btn.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 15%;
-  right: 15%;
-  height: 2px;
-  background: var(--accent-cyan);
-  border-radius: 2px;
-  box-shadow: 0 0 8px var(--accent-cyan);
+  background: var(--surface-btn-active);
+  color: #ffffff;
 }
 
 /* Content Area */
@@ -186,25 +156,35 @@ html, body {
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  height: calc(100% - 94px);
 }
 
-/* View panels */
 .view-panel {
   display: none;
   width: 100%;
   height: 100%;
+  flex-direction: column;
 }
 
 .view-panel.active {
   display: flex;
-  flex-direction: column;
 }
 
-/* Trackpad View */
+/* Mousepad Layout (Mode 1) */
+.mousepad-full-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
 .trackpad-surface {
   flex: 1;
   width: 100%;
-  background: radial-gradient(circle at center, #111a28 0%, #0a0e16 100%);
+  height: 100%;
+  background: #10131a;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -212,152 +192,195 @@ html, body {
   position: relative;
   touch-action: none;
   cursor: crosshair;
+  overflow: hidden;
 }
 
-.trackpad-surface::before {
-  content: '';
+.trackpad-guide {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
-  border: 1px dashed rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  border: 1px dashed #1c212e;
+  border-radius: 8px;
   pointer-events: none;
 }
 
 .trackpad-hint {
-  color: rgba(255, 255, 255, 0.25);
-  font-size: 13px;
+  color: var(--text-subtle);
+  font-size: 12px;
   text-align: center;
   pointer-events: none;
   line-height: 1.6;
 }
 
-/* Keyboard View */
-.keyboard-container {
+/* Physical Click Buttons Bar */
+.click-bar {
+  display: flex;
+  height: 54px;
+  background: var(--surface-bg);
+  border-top: 1px solid var(--surface-border);
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.btn-click {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 14px;
-  background: var(--bg-color);
-  overflow-y: auto;
-}
-
-.keyboard-trigger-card {
-  background: var(--surface-bg);
-  border: 1px solid var(--surface-border);
-  border-radius: 12px;
-  padding: 16px;
-  text-align: center;
-  margin-bottom: 16px;
-}
-
-.btn-open-keyboard {
-  width: 100%;
-  padding: 14px;
-  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+  background: #151822;
   border: none;
-  border-radius: 8px;
-  color: #0b0f17;
-  font-weight: 700;
-  font-size: 15px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.hidden-text-input {
-  position: absolute;
-  opacity: 0;
-  top: -9999px;
-  left: -9999px;
-  width: 1px;
-  height: 1px;
-  pointer-events: none;
-}
-
-/* Keypad Grid for Special Keys */
-.key-grid-title {
-  font-size: 12px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 10px;
-}
-
-.key-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.key-btn {
-  background: var(--surface-bg);
-  border: 1px solid var(--surface-border);
   color: var(--text-main);
-  border-radius: 8px;
-  padding: 12px 6px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  touch-action: manipulation;
-  transition: all 0.1s ease;
 }
 
-.key-btn:active {
-  background: rgba(0, 242, 254, 0.2);
-  border-color: var(--accent-cyan);
-  transform: scale(0.96);
+.btn-click:first-child {
+  border-right: 1px solid var(--surface-border);
 }
 
-.key-btn.modifier.active {
-  background: rgba(0, 242, 254, 0.25);
-  border-color: var(--accent-cyan);
-  color: var(--accent-cyan);
-  box-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
+.btn-click:active {
+  background: var(--surface-btn-active);
 }
 
-.key-span-2 {
-  grid-column: span 2;
-}
-
-/* Both View: Trackpad Top + Keyboard Bottom */
-.both-layout {
+/* Both Mode Layout (Mode 2) */
+.both-container {
   flex: 1;
   display: flex;
   flex-direction: column;
   height: 100%;
+  width: 100%;
+  overflow: hidden;
 }
 
-.both-trackpad-wrap {
-  flex: 1.2;
+.both-trackpad-half {
+  flex: 1.1;
+  display: flex;
+  flex-direction: column;
+  min-height: 160px;
   position: relative;
   border-bottom: 1px solid var(--surface-border);
 }
 
-.both-keyboard-wrap {
+.both-controls-half {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   background: var(--bg-color);
-  padding: 10px;
+  padding: 8px 10px;
   overflow-y: auto;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-/* Fullscreen Overlay Messages (Waiting, Denied, Disconnected) */
+/* Typing Row: Show Keyboard First */
+.typing-row {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+}
+
+.typing-input {
+  flex: 1;
+  background: #13161f;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #ffffff;
+  font-family: inherit;
+  outline: none;
+}
+
+.typing-input:focus {
+  border-color: #3b82f6;
+  background: #171b26;
+}
+
+.typing-input::placeholder {
+  color: var(--text-subtle);
+}
+
+.btn-type-action {
+  background: var(--surface-btn);
+  border: 1px solid var(--surface-border);
+  color: var(--text-main);
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.btn-type-action:active {
+  background: var(--surface-btn-active);
+}
+
+/* Keypad Grids */
+.keys-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.key-row {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+}
+
+.key-btn {
+  flex: 1;
+  background: var(--surface-btn);
+  border: 1px solid var(--surface-border);
+  color: var(--text-main);
+  border-radius: 6px;
+  padding: 8px 4px;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: inherit;
+  touch-action: manipulation;
+}
+
+.key-btn:active {
+  background: var(--surface-btn-active);
+}
+
+.key-btn.modifier.active {
+  background: #1e3a8a;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+.key-arrow {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.key-span-2 {
+  flex: 2;
+}
+
+/* Fullscreen Overlay Messages (Minimal, Solid, Non-animated) */
 .overlay-screen {
   position: absolute;
-  top: 52px;
+  top: 48px;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(11, 15, 23, 0.95);
-  backdrop-filter: blur(8px);
+  background: rgba(13, 15, 20, 0.96);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -371,21 +394,17 @@ html, body {
   display: none;
 }
 
-.overlay-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-}
-
 .overlay-title {
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 8px;
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #ffffff;
 }
 
 .overlay-desc {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-muted);
   max-width: 280px;
   line-height: 1.5;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
