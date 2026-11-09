@@ -1,0 +1,26 @@
+{
+  "name": "pulse-ctrl",
+  "version": "1.0.0",
+  "description": "Wireless phone trackpad and keyboard for your laptop",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "server": "node server/index.js",
+    "helper": "node helper/index.js"
+  },
+  "dependencies": {
+    "@nut-tree/nut-js": "npm:@nut-tree-fork/nut-js@^4.2.6",
+    "express": "^4.22.3",
+    "qrcode": "^1.5.4",
+    "ws": "^8.22.2"
+  },
+  "keywords": [
+    "trackpad",
+    "keyboard",
+    "remote-control",
+    "websocket",
+    "qr-pairing"
+  ],
+  "author": "",
+  "license": "MIT"
+}
