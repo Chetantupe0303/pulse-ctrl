@@ -1,6 +1,7 @@
 /**
  * PulseCtrl Helper - OS Input Executor
  * Uses @nut-tree/nut-js for native mouse and keyboard simulation.
+ * Enforces mode-based execution permissions directly on the laptop.
  */
 
 const { mouse, keyboard, Button, Key, Point } = require('@nut-tree/nut-js');
@@ -40,12 +41,37 @@ const MODIFIER_MAP = {
 };
 
 /**
+ * Checks if the event type is permitted under the current mode.
+ * @param {string} type - Event type
+ * @param {string} mode - 'trackpad' | 'keyboard' | 'both'
+ * @returns {boolean}
+ */
+function isPermittedInMode(type, mode) {
+  if (mode === 'trackpad') {
+    return type === 'move' || type === 'click' || type === 'scroll';
+  }
+  if (mode === 'keyboard') {
+    return type === 'text' || type === 'key';
+  }
+  if (mode === 'both') {
+    return ['move', 'click', 'scroll', 'text', 'key'].includes(type);
+  }
+  return false;
+}
+
+/**
  * Executes a sanitized message on the host OS.
  * @param {object} event - Sanitized protocol event
  * @param {string} currentMode - Active session mode
  */
 async function executeEvent(event, currentMode = 'trackpad') {
   if (!event || !event.type) return;
+
+  // Enforce mode permission check on the laptop helper
+  if (!isPermittedInMode(event.type, currentMode)) {
+    console.warn(`[Executor] Blocked "${event.type}" event: not permitted in ${currentMode} mode.`);
+    return;
+  }
 
   try {
     switch (event.type) {
@@ -120,7 +146,7 @@ async function executeEvent(event, currentMode = 'trackpad') {
       }
 
       default:
-        // Ignored or handled elsewhere
+        // Ignore unrecognized events
         break;
     }
   } catch (err) {
@@ -130,6 +156,7 @@ async function executeEvent(event, currentMode = 'trackpad') {
 
 module.exports = {
   executeEvent,
+  isPermittedInMode,
   KEY_MAP,
   MODIFIER_MAP
 };

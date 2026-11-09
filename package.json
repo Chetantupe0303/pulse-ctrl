@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server/index.js",
     "server": "node server/index.js",
-    "helper": "node helper/index.js"
+    "helper": "node helper/index.js",
+    "test": "node test/end-to-end-test.js"
   },
   "dependencies": {
     "@nut-tree/nut-js": "npm:@nut-tree-fork/nut-js@^4.2.6",

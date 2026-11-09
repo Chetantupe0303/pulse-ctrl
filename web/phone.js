@@ -189,7 +189,7 @@
     if (!element) return;
 
     let touchStartTime = 0;
-    let touchCount = 0;
+    let maxTouchCount = 0;
     let initialTouchX = 0;
     let initialTouchY = 0;
     let lastX = 0;
@@ -202,6 +202,7 @@
     let pendingDy = 0;
     let pendingScrollDy = 0;
     let rafScheduled = false;
+    let lastFlushTime = 0;
 
     function flushDeltas() {
       rafScheduled = false;
@@ -229,21 +230,30 @@
     function scheduleFlush() {
       if (!rafScheduled) {
         rafScheduled = true;
-        requestAnimationFrame(flushDeltas);
+        requestAnimationFrame((now) => {
+          rafScheduled = false;
+          // Strictly throttle to ~60fps (16ms interval)
+          if (now - lastFlushTime >= 15) {
+            lastFlushTime = now;
+            flushDeltas();
+          } else {
+            scheduleFlush();
+          }
+        });
       }
     }
 
     element.addEventListener('touchstart', (e) => {
-      touchCount = e.touches.length;
+      maxTouchCount = Math.max(maxTouchCount, e.touches.length);
       touchStartTime = Date.now();
       hasMoved = false;
 
-      if (touchCount === 1) {
+      if (e.touches.length === 1) {
         lastX = e.touches[0].clientX;
         lastY = e.touches[0].clientY;
         initialTouchX = lastX;
         initialTouchY = lastY;
-      } else if (touchCount === 2) {
+      } else if (e.touches.length === 2) {
         lastScrollY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
       }
     }, { passive: false });
@@ -251,7 +261,9 @@
     element.addEventListener('touchmove', (e) => {
       e.preventDefault(); // Prevent native browser pull-to-refresh or panning
 
-      if (e.touches.length === 1 && touchCount === 1) {
+      maxTouchCount = Math.max(maxTouchCount, e.touches.length);
+
+      if (e.touches.length === 1) {
         // 1-finger cursor movement
         const currentX = e.touches[0].clientX;
         const currentY = e.touches[0].clientY;
@@ -290,27 +302,27 @@
 
       // Handle taps if fingers did not drag
       if (!hasMoved && elapsed < 320) {
-        if (touchCount === 1) {
+        if (maxTouchCount === 1) {
           // Single tap = left click
           send({ type: 'click', button: 'left' });
-        } else if (touchCount === 2) {
+        } else if (maxTouchCount === 2) {
           // Two-finger tap = right click
           send({ type: 'click', button: 'right' });
         }
       }
 
-      touchCount = e.touches.length;
-      if (touchCount === 0) {
-        // Flush any remaining deltas
+      if (e.touches.length === 0) {
+        // All fingers lifted, flush any remaining movement and reset
         flushDeltas();
+        maxTouchCount = 0;
       }
     }, { passive: false });
 
     element.addEventListener('touchcancel', () => {
-      touchCount = 0;
       pendingDx = 0;
       pendingDy = 0;
       pendingScrollDy = 0;
+      maxTouchCount = 0;
     });
   }
 
@@ -335,9 +347,9 @@
   // Listen to "input" event (more reliable than keydown on mobile browsers)
   nativeKeyboardInput.addEventListener('input', (e) => {
     const inputType = e.inputType;
-    const value = e.data;
+    const value = e.data || nativeKeyboardInput.value;
 
-    if (inputType === 'deleteContentBackward') {
+    if (inputType === 'deleteContentBackward' || (!nativeKeyboardInput.value && inputType === 'deleteWordBackward')) {
       // User tapped mobile backspace
       send({
         type: 'key',

@@ -14,6 +14,17 @@ let ws = null;
 let currentMode = 'trackpad';
 let currentSessionId = null;
 
+// Sequential queue to guarantee in-order execution of rapid mouse/keyboard events
+let executionChain = Promise.resolve();
+
+function queueEvent(event, mode) {
+  executionChain = executionChain
+    .then(() => executeEvent(event, mode))
+    .catch((err) => {
+      console.error('[Helper Queue Error]:', err.message);
+    });
+}
+
 function openBrowser(url) {
   // Attempt to open the laptop webpage automatically on start
   const startCmd = process.platform === 'win32'
@@ -46,7 +57,8 @@ function connect() {
 
       if (msg.type === 'session_ready') {
         currentSessionId = msg.sessionId;
-        const webUrl = `http://localhost:${SERVER_HOST.split(':')[1] || '3000'}/?session=${msg.sessionId}`;
+        const port = SERVER_HOST.split(':')[1] || '3000';
+        const webUrl = `http://localhost:${port}/?session=${msg.sessionId}`;
 
         console.log('');
         console.log('='.repeat(60));
@@ -74,7 +86,7 @@ function connect() {
         console.warn(`[Helper] Session expired: ${msg.message}`);
       } else {
         // Control event from phone: move, click, scroll, text, key
-        await executeEvent(msg, currentMode);
+        queueEvent(msg, currentMode);
       }
     } catch (e) {
       console.error('[Helper] Message handling error:', e.message);
