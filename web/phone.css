@@ -1,0 +1,391 @@
+/* PulseCtrl - Phone Mobile-First UI Theme & Styling */
+:root {
+  --bg-color: #0b0f17;
+  --surface-bg: #131b26;
+  --surface-border: #1f2c3d;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --accent-cyan: #00f2fe;
+  --accent-blue: #4facfe;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --trackpad-bg: #0f1622;
+  --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: fixed;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  font-family: var(--font-stack);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* Header */
+.phone-header {
+  height: 52px;
+  background: var(--surface-bg);
+  border-bottom: 1px solid var(--surface-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-logo {
+  font-size: 16px;
+}
+
+.brand-name {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  background: linear-gradient(135deg, #ffffff, #cbd5e1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--text-muted);
+}
+
+.status-waiting .status-dot {
+  background-color: var(--warning);
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
+}
+
+.status-connected .status-dot {
+  background-color: var(--success);
+  animation: phone-pulse 2s infinite ease-in-out;
+}
+
+.status-disconnected .status-dot {
+  background-color: var(--danger);
+}
+
+@keyframes phone-pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.btn-header-disconnect {
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-header-disconnect:active {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+/* Mode Switcher Tabs */
+.mode-tabs {
+  height: 44px;
+  background: rgba(19, 27, 38, 0.7);
+  display: flex;
+  border-bottom: 1px solid var(--surface-border);
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  font-family: inherit;
+}
+
+.tab-btn.active {
+  color: var(--accent-cyan);
+}
+
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 15%;
+  right: 15%;
+  height: 2px;
+  background: var(--accent-cyan);
+  border-radius: 2px;
+  box-shadow: 0 0 8px var(--accent-cyan);
+}
+
+/* Content Area */
+.content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* View panels */
+.view-panel {
+  display: none;
+  width: 100%;
+  height: 100%;
+}
+
+.view-panel.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Trackpad View */
+.trackpad-surface {
+  flex: 1;
+  width: 100%;
+  background: radial-gradient(circle at center, #111a28 0%, #0a0e16 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.trackpad-surface::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+.trackpad-hint {
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 13px;
+  text-align: center;
+  pointer-events: none;
+  line-height: 1.6;
+}
+
+/* Keyboard View */
+.keyboard-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  background: var(--bg-color);
+  overflow-y: auto;
+}
+
+.keyboard-trigger-card {
+  background: var(--surface-bg);
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.btn-open-keyboard {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+  border: none;
+  border-radius: 8px;
+  color: #0b0f17;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.hidden-text-input {
+  position: absolute;
+  opacity: 0;
+  top: -9999px;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+/* Keypad Grid for Special Keys */
+.key-grid-title {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.key-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.key-btn {
+  background: var(--surface-bg);
+  border: 1px solid var(--surface-border);
+  color: var(--text-main);
+  border-radius: 8px;
+  padding: 12px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: all 0.1s ease;
+}
+
+.key-btn:active {
+  background: rgba(0, 242, 254, 0.2);
+  border-color: var(--accent-cyan);
+  transform: scale(0.96);
+}
+
+.key-btn.modifier.active {
+  background: rgba(0, 242, 254, 0.25);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  box-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
+}
+
+.key-span-2 {
+  grid-column: span 2;
+}
+
+/* Both View: Trackpad Top + Keyboard Bottom */
+.both-layout {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.both-trackpad-wrap {
+  flex: 1.2;
+  position: relative;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.both-keyboard-wrap {
+  flex: 1;
+  background: var(--bg-color);
+  padding: 10px;
+  overflow-y: auto;
+}
+
+/* Fullscreen Overlay Messages (Waiting, Denied, Disconnected) */
+.overlay-screen {
+  position: absolute;
+  top: 52px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(11, 15, 23, 0.95);
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  z-index: 100;
+}
+
+.overlay-screen.hidden {
+  display: none;
+}
+
+.overlay-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.overlay-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.overlay-desc {
+  font-size: 14px;
+  color: var(--text-muted);
+  max-width: 280px;
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
