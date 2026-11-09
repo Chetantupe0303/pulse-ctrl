@@ -10,22 +10,19 @@
   const qrImage = document.getElementById('qrImage');
   const qrDirectLink = document.getElementById('qrDirectLink');
   const connectedSection = document.getElementById('connectedSection');
+  const connectedDeviceName = document.getElementById('connectedDeviceName');
   const activeModeBadge = document.getElementById('activeModeBadge');
   const disconnectBtn = document.getElementById('disconnectBtn');
+  const btnNewQR = document.getElementById('btnNewQR');
 
   // Modal elements
   const allowModal = document.getElementById('allowModal');
-  const modalDeviceUA = document.getElementById('modalDeviceUA');
-  const modalDeviceIP = document.getElementById('modalDeviceIP');
+  const modalDeviceName = document.getElementById('modalDeviceName');
   const allowBtn = document.getElementById('allowBtn');
   const denyBtn = document.getElementById('denyBtn');
 
   let ws = null;
   let currentSessionId = null;
-
-  // Read URL query parameter for explicit session ID if provided
-  const urlParams = new URLSearchParams(window.location.search);
-  const paramSession = urlParams.get('session');
 
   function setStatus(state, text) {
     statusPill.className = 'status-pill status-' + state;
@@ -45,9 +42,8 @@
     }
   }
 
-  function showModal(device) {
-    modalDeviceUA.textContent = device?.userAgent || 'Mobile Phone';
-    modalDeviceIP.textContent = device?.ip || 'LAN Client';
+  function showModal(deviceName) {
+    modalDeviceName.textContent = deviceName || 'Mobile Device';
     allowModal.classList.add('active');
   }
 
@@ -57,10 +53,7 @@
 
   function connectWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    let wsUrl = `${protocol}//${window.location.host}/ws?role=laptop_web`;
-    if (paramSession) {
-      wsUrl += `&session=${encodeURIComponent(paramSession)}`;
-    }
+    const wsUrl = `${protocol}//${window.location.host}/ws?role=laptop_web`;
 
     ws = new WebSocket(wsUrl);
 
@@ -74,6 +67,8 @@
 
         if (msg.type === 'session_info') {
           currentSessionId = msg.sessionId;
+          hideModal();
+
           if (msg.qrDataUrl) {
             qrImage.src = msg.qrDataUrl;
             qrDirectLink.href = msg.phoneUrl;
@@ -81,6 +76,9 @@
           }
 
           if (msg.status === 'connected') {
+            if (msg.deviceName && connectedDeviceName) {
+              connectedDeviceName.textContent = msg.deviceName;
+            }
             setStatus('connected', 'Phone connected');
           } else {
             setStatus('waiting', 'Waiting for phone');
@@ -94,25 +92,29 @@
           setStatus('waiting', 'Waiting for laptop helper...');
           qrDirectLink.textContent = msg.message;
         } else if (msg.type === 'pair_request') {
-          // Phone scanned QR and wants to connect!
-          showModal(msg.device);
+          // Phone scanned QR and wants to connect (shows clean device name only)
+          showModal(msg.deviceName);
         } else if (msg.type === 'status') {
           if (msg.status === 'connected') {
             hideModal();
+            if (msg.deviceName && connectedDeviceName) {
+              connectedDeviceName.textContent = msg.deviceName;
+            }
             setStatus('connected', 'Phone connected');
           } else if (msg.status === 'waiting') {
             hideModal();
             setStatus('waiting', 'Waiting for phone');
           } else if (msg.status === 'disconnected') {
             hideModal();
-            setStatus('disconnected', msg.message || 'Disconnected');
+            // Disconnected: laptop automatically awaits fresh QR from server
+            setStatus('waiting', 'Waiting for phone');
           }
         } else if (msg.type === 'mode') {
           const modeLabel = msg.value === 'trackpad' ? 'Mousepad' : (msg.value === 'both' ? 'Both' : msg.value);
           activeModeBadge.textContent = 'Mode: ' + modeLabel;
         } else if (msg.type === 'expired') {
           hideModal();
-          setStatus('disconnected', msg.message || 'Session expired');
+          setStatus('waiting', 'Generating new QR code...');
         }
       } catch (e) {
         console.error('[Laptop] Error parsing message:', e);
@@ -121,7 +123,6 @@
 
     ws.onclose = () => {
       console.warn('[Laptop] WebSocket closed. Retrying in 2 seconds...');
-      setStatus('disconnected', 'Disconnected from server');
       setTimeout(connectWebSocket, 2000);
     };
 
@@ -152,6 +153,15 @@
       ws.send(JSON.stringify({ type: 'disconnect' }));
     }
   });
+
+  // Handle New QR Code button
+  if (btnNewQR) {
+    btnNewQR.addEventListener('click', () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'request_new_qr' }));
+      }
+    });
+  }
 
   // Initialize connection
   connectWebSocket();

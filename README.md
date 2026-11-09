@@ -38,14 +38,16 @@ pulse-ctrl/
 ## Features
 
 - **WhatsApp Web-style QR Pairing**: Scan the QR code displayed on the laptop screen with your phone camera to pair instantly.
-- **Strict Approval Security**: The laptop displays an **"Allow this device?"** prompt with device metadata before any control events can execute.
+- **Privacy-First Approval**: The laptop displays an **"Allow Connection?"** prompt with the clean device name only (e.g. "iPhone", "Android Phone") without exposing internal IP addresses, hostname, or sensitive laptop specs.
+- **Auto-Reset on Disconnect**: When disconnected from the mobile device, the laptop automatically generates a fresh pairing QR code and remains ready for immediate re-pairing without restarting any scripts or refreshing pages.
+- **Seamless Reconnection**: If the mobile phone sleeps or Wi-Fi temporarily drops, the phone client automatically resumes the session using a secure cryptographic `reconnectToken` without requiring a re-scan.
 - **Two Streamlined Modes**:
   1. **Mousepad Mode**:
      - **1-Finger Drag**: Smooth cursor movement throttled to 60fps.
      - **Single Tap**: Left click.
      - **Two-Finger Tap**: Right click.
      - **Two-Finger Drag**: Natural vertical scrolling.
-     - **Dedicated Click Buttons**: Physical [Left Click] and [Right Click] buttons for effortless thumb access.
+     - **Physical Click Buttons**: Dedicated [Left Click] and [Right Click] buttons for effortless thumb access.
   2. **Both Mode (Mousepad + Keyboard)**:
      - Upper area features a fully responsive, dedicated mousepad with touch gestures and physical click buttons.
      - Lower area displays the typing input bar first, followed by functional navigation keys, an arrow keypad (←, ↑, ↓, →), and modifier toggles (Ctrl, Alt, Shift).
@@ -204,8 +206,12 @@ PulseCtrl was designed for seamless packaging as a native app:
 
 ## Automated Tests
 
-Run the comprehensive end-to-end test suite:
+Run the comprehensive end-to-end and lifecycle test suites:
 ```bash
+# Full end-to-end tests (Stages 1–4: pairing, mousepad, keyboard, both mode permissions)
 npm test
+
+# Disconnection, auto-reset, fresh QR generation, and reconnect lifecycle tests
+npm run test:lifecycle
 ```
-This runs the full test suite verifying session creation, token validation, security rejection of bad tokens, the "Allow this device?" flow, mode permissions, and clean disconnects.
+These suites verify session creation, token validation, security rejection of bad tokens, the "Allow Connection?" flow, mode permissions, auto-reset with fresh QR generation on disconnect, and seamless reconnection.

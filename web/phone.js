@@ -1,7 +1,7 @@
 /**
  * PulseCtrl - Phone Client Controller
  * Clean, minimal, utility-focused wireless trackpad & keyboard engine.
- * Supports 2 modes: Mousepad and Both (Mousepad + Keyboard).
+ * Supports automated session recovery, seamless reconnection, and 2 operational modes.
  */
 
 (function () {
@@ -16,6 +16,7 @@
   const overlayScreen = document.getElementById('overlayScreen');
   const overlayTitle = document.getElementById('overlayTitle');
   const overlayDesc = document.getElementById('overlayDesc');
+  const btnOverlayAction = document.getElementById('btnOverlayAction');
 
   // Mode panels & tabs
   const tabButtons = document.querySelectorAll('.tab-btn');
@@ -34,45 +35,104 @@
   let ws = null;
   let isPaired = false;
   let currentMode = 'trackpad';
+  let reconnectAttempts = 0;
+  let isExplicitDisconnect = false;
 
   // Active modifier keys (Ctrl, Alt, Shift)
   const activeModifiers = new Set();
 
-  // Status & overlay management
+  // Storage key for seamless session resumption
+  const STORAGE_KEY = 'pulse_reconnect_session';
+
   function setStatus(state, text) {
     statusPill.className = 'status-pill status-' + state;
     statusText.textContent = text;
   }
 
-  function showOverlay(title, desc) {
+  function showOverlay(title, desc, showAction = false, actionText = 'Reconnect') {
     overlayTitle.textContent = title;
     overlayDesc.textContent = desc;
     overlayScreen.classList.remove('hidden');
+
+    if (showAction && btnOverlayAction) {
+      btnOverlayAction.style.display = 'inline-block';
+      btnOverlayAction.textContent = actionText;
+    } else if (btnOverlayAction) {
+      btnOverlayAction.style.display = 'none';
+    }
   }
 
   function hideOverlay() {
     overlayScreen.classList.add('hidden');
+    if (btnOverlayAction) {
+      btnOverlayAction.style.display = 'none';
+    }
   }
 
-  if (!sessionId || !token) {
-    showOverlay('Invalid Link', 'Missing session ID or security token. Please scan the QR code on your laptop.');
-    setStatus('disconnected', 'Invalid QR');
+  // Retrieve any stored reconnect token
+  function getSavedReconnectData() {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (_) {}
+    return null;
+  }
+
+  function saveReconnectData(reconnectToken) {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+        sessionId,
+        reconnectToken,
+        savedAt: Date.now()
+      }));
+    } catch (_) {}
+  }
+
+  function clearReconnectData() {
+    try {
+      sessionStorage.removeItem(STORAGE_KEY);
+    } catch (_) {}
+  }
+
+  if (!sessionId && !getSavedReconnectData()?.sessionId) {
+    showOverlay('Scan QR Code', 'Open the laptop page and scan the QR code to connect.', false);
+    setStatus('disconnected', 'Scan QR');
     return;
   }
 
-  // WebSocket Connection
+  // WebSocket Connection & Reconnection Engine
   function connect() {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws?role=phone&session=${encodeURIComponent(sessionId)}&token=${encodeURIComponent(token)}`;
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
 
-    showOverlay('Connecting...', 'Contacting laptop server...');
-    setStatus('waiting', 'Connecting');
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const saved = getSavedReconnectData();
+    let wsUrl = '';
+
+    // If we have a saved reconnect token for this session, use seamless reconnection
+    if (saved && saved.sessionId === sessionId && saved.reconnectToken && !isExplicitDisconnect) {
+      wsUrl = `${protocol}//${window.location.host}/ws?role=phone&session=${encodeURIComponent(saved.sessionId)}&reconnect=${encodeURIComponent(saved.reconnectToken)}`;
+      showOverlay('Reconnecting...', 'Resuming session...');
+      setStatus('waiting', 'Reconnecting');
+    } else if (sessionId && token) {
+      wsUrl = `${protocol}//${window.location.host}/ws?role=phone&session=${encodeURIComponent(sessionId)}&token=${encodeURIComponent(token)}`;
+      showOverlay('Connecting...', 'Contacting laptop...');
+      setStatus('waiting', 'Connecting');
+    } else {
+      showOverlay('Session Ended', 'Please scan the new QR code on your laptop screen.', false);
+      setStatus('disconnected', 'Scan QR');
+      return;
+    }
 
     ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-      showOverlay('Waiting for Approval', 'Please click "Allow" on your laptop screen.');
-      setStatus('waiting', 'Awaiting approval');
+      reconnectAttempts = 0;
+      if (!saved || !saved.reconnectToken) {
+        showOverlay('Waiting for Approval', 'Please click "Allow" on your laptop screen.');
+        setStatus('waiting', 'Awaiting approval');
+      }
     };
 
     ws.onmessage = (event) => {
@@ -84,26 +144,36 @@
           setStatus('waiting', 'Awaiting approval');
         } else if (msg.type === 'paired') {
           isPaired = true;
+          isExplicitDisconnect = false;
           hideOverlay();
           setStatus('connected', 'Connected');
+
+          if (msg.reconnectToken) {
+            saveReconnectData(msg.reconnectToken);
+          }
+
           if (msg.mode) {
             setMode(msg.mode === 'both' ? 'both' : 'trackpad', false);
           }
         } else if (msg.type === 'denied') {
           isPaired = false;
-          showOverlay('Connection Denied', 'The laptop user denied access.');
+          clearReconnectData();
+          showOverlay('Connection Denied', 'The laptop denied connection. Please scan again if you wish to connect.', false);
           setStatus('disconnected', 'Denied');
         } else if (msg.type === 'status' && msg.status === 'disconnected') {
           isPaired = false;
-          showOverlay('Disconnected', msg.message || 'Connection was closed.');
+          clearReconnectData();
+          showOverlay('Disconnected', 'Connection ended. Scan the QR code on your laptop to connect again.', false);
           setStatus('disconnected', 'Disconnected');
         } else if (msg.type === 'expired') {
           isPaired = false;
-          showOverlay('Session Expired', msg.message || 'Session timed out.');
+          clearReconnectData();
+          showOverlay('Session Expired', 'Session timed out. Scan the QR code on your laptop to connect again.', false);
           setStatus('disconnected', 'Expired');
         } else if (msg.type === 'error') {
           isPaired = false;
-          showOverlay('Connection Error', msg.message || 'Unable to pair with laptop.');
+          clearReconnectData();
+          showOverlay('Connection Error', msg.message || 'Unable to connect. Please scan the QR code again.', false);
           setStatus('disconnected', 'Error');
         } else if (msg.type === 'mode') {
           setMode(msg.value === 'both' ? 'both' : 'trackpad', false);
@@ -114,11 +184,27 @@
     };
 
     ws.onclose = () => {
-      if (isPaired) {
-        showOverlay('Disconnected', 'Lost connection to laptop.');
+      const hadSession = isPaired;
+      isPaired = false;
+
+      if (isExplicitDisconnect) {
+        clearReconnectData();
+        showOverlay('Disconnected', 'You disconnected from the laptop. Scan the QR code to connect again.', false);
+        setStatus('disconnected', 'Disconnected');
+        return;
+      }
+
+      // If unexpected disconnect (e.g. mobile lock or Wi-Fi blip), attempt auto-reconnect
+      if (hadSession && reconnectAttempts < 5) {
+        reconnectAttempts++;
+        showOverlay('Reconnecting...', `Reconnecting (attempt ${reconnectAttempts}/5)...`);
+        setStatus('waiting', 'Reconnecting');
+        setTimeout(connect, 1500);
+      } else {
+        clearReconnectData();
+        showOverlay('Disconnected', 'Connection lost. Scan the QR code on your laptop to connect again.', true, 'Try Again');
         setStatus('disconnected', 'Disconnected');
       }
-      isPaired = false;
     };
 
     ws.onerror = (err) => {
@@ -135,12 +221,21 @@
 
   // Disconnect button
   disconnectBtn.addEventListener('click', () => {
+    isExplicitDisconnect = true;
+    clearReconnectData();
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'disconnect' }));
     }
-    showOverlay('Disconnected', 'You disconnected from the laptop.');
+    showOverlay('Disconnected', 'You disconnected from the laptop. Scan the QR code to connect again.', false);
     setStatus('disconnected', 'Disconnected');
   });
+
+  if (btnOverlayAction) {
+    btnOverlayAction.addEventListener('click', () => {
+      isExplicitDisconnect = false;
+      connect();
+    });
+  }
 
   // 2-Mode switching (Mousepad vs Both)
   function setMode(mode, notifyServer = true) {

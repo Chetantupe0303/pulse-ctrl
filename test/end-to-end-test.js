@@ -17,14 +17,13 @@ const { server, sessionManager } = require('../server/index');
 const { executeEvent, isPermittedInMode } = require('../helper/executor');
 const { validateMessage } = require('../server/validator');
 
-const TEST_PORT = 3066;
-
 async function runEndToEndTests() {
   console.log('🧪 Starting PulseCtrl End-to-End Tests...\n');
 
-  // Start test server
-  await new Promise((resolve) => server.listen(TEST_PORT, resolve));
-  console.log(`[1] Server listening on port ${TEST_PORT}`);
+  // Start test server on dynamic free port
+  await new Promise((resolve) => server.listen(0, resolve));
+  const TEST_PORT = server.address().port;
+  console.log(`[1] Server listening on dynamic port ${TEST_PORT}`);
 
   // Connect helper
   const helperWs = new WebSocket(`ws://localhost:${TEST_PORT}/ws?role=helper`);

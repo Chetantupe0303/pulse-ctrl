@@ -31,29 +31,30 @@
 
       <!-- Connected State Information -->
       <div id="connectedSection" class="connected-info">
-        <p style="font-size: 14px; margin-bottom: 8px; color: var(--text-main);">Phone is connected and controlling this laptop.</p>
+        <p style="font-size: 14px; margin-bottom: 6px; color: var(--text-main);">
+          Connected device: <strong id="connectedDeviceName" style="color: #ffffff;">Phone</strong>
+        </p>
         <div id="activeModeBadge" class="mode-badge">Mode: Mousepad</div>
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
           Use your phone screen to move the cursor, click, scroll, and type.
         </p>
       </div>
 
-      <!-- Disconnect Button -->
-      <div>
+      <!-- Actions -->
+      <div style="display: flex; gap: 8px; justify-content: center;">
+        <button id="btnNewQR" class="btn">New QR Code</button>
         <button id="disconnectBtn" class="btn btn-danger" disabled>Disconnect</button>
       </div>
     </main>
   </div>
 
-  <!-- "Allow this device?" Modal Prompt -->
+  <!-- "Allow Device?" Modal Prompt (Zero Laptop Info Leaked, Clean Device Name Only) -->
   <div id="allowModal" class="modal-overlay">
     <div class="modal-card">
-      <h2 class="modal-title">Allow this device?</h2>
-      <p class="modal-desc">A phone scanned the QR code and is requesting permission to control your mouse and keyboard.</p>
-      <div class="device-details">
-        <div><strong>Device:</strong> <span id="modalDeviceUA">Mobile Device</span></div>
-        <div style="margin-top: 4px;"><strong>IP:</strong> <span id="modalDeviceIP">LAN IP</span></div>
-      </div>
+      <h2 class="modal-title">Allow Connection?</h2>
+      <p class="modal-desc" style="font-size: 14px; margin-bottom: 24px;">
+        Connect <strong id="modalDeviceName" style="color: #ffffff;">Mobile Device</strong> to control this laptop?
+      </p>
       <div class="modal-actions">
         <button id="denyBtn" class="btn btn-danger">Deny</button>
         <button id="allowBtn" class="btn btn-primary">Allow</button>

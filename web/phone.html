@@ -28,9 +28,6 @@
       </div>
     </nav>
 
-    <!-- Hidden text input for native mobile keyboard input event capturing -->
-    <input type="text" id="nativeKeyboardInput" style="position:absolute; opacity:0; pointer-events:none; left:-9999px;" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
-
     <!-- Content Area with 2 Modes -->
     <main class="content-area">
       <!-- 1. Mousepad Full Screen -->
@@ -113,6 +110,7 @@
     <div id="overlayScreen" class="overlay-screen">
       <h2 id="overlayTitle" class="overlay-title">Connecting...</h2>
       <p id="overlayDesc" class="overlay-desc">Contacting laptop server...</p>
+      <button id="btnOverlayAction" class="btn-header-disconnect" style="display:none; color:#f3f4f6; border-color:#2a2f3f; background:#1b1f2b; padding:8px 16px; margin-top:12px; font-size:13px;">Reconnect</button>
     </div>
   </div>
 
