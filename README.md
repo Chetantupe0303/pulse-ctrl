@@ -48,6 +48,29 @@ Open the laptop page at the URL printed by the server, scan its QR code with you
 
 > Native input permissions may be required by your operating system. On macOS, grant Accessibility access to the terminal or Node.js running the helper.
 
+## Hosting & Deployment (Render, Railway, etc.)
+
+PulseCtrl is 100% cloud-ready with automatic HTTPS/WSS origin detection and QR generation.
+
+### Render Setup:
+1. Connect your GitHub repository to [Render](https://render.com) and create a **Web Service**.
+2. Render will automatically detect the settings from `render.yaml` (or enter them manually):
+   - **Environment:** `Node`
+   - **Build Command:** `npm install`
+   - **Start Command:** `npm run server`
+3. Click **Deploy**. Render will assign you a live HTTPS URL (e.g. `https://pulse-ctrl.onrender.com`).
+
+### Linking Your Laptop to Render:
+Once your server is live on Render:
+1. Open your Render site on your laptop: `https://pulse-ctrl.onrender.com`
+2. Run this single command on your laptop terminal:
+   ```bash
+   node helper/index.js --server=pulse-ctrl.onrender.com
+   ```
+   *(Or on Windows, double-click `connect-render.bat`)*.
+3. The helper remembers your Render domain in `.pulse-target.txt`, so in the future you only have to type `npm run helper`!
+4. The QR code appears on your screen—scan it with your phone (from Wi-Fi or 4G/5G mobile data) to control your laptop from anywhere!
+
 <div align="center">
 
 <sub>MIT licensed · Built for the small distance between devices</sub>

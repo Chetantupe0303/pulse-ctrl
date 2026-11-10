@@ -12,6 +12,7 @@ const WebSocket = require('ws');
 const { executeEvent } = require('./executor');
 
 const CONFIG_FILE = path.join(__dirname, '..', '.pulse-config.json');
+const SAVED_TARGET_FILE = path.join(__dirname, '..', '.pulse-target.txt');
 
 let ws = null;
 let currentMode = 'trackpad';
@@ -31,13 +32,40 @@ function queueEvent(event, mode) {
 
 /**
  * Determines target server host and port.
- * Prioritizes environment variables, then .pulse-config.json, then defaults to localhost:3000.
+ * Prioritizes CLI arguments (--server=...), environment variables, saved targets, then local config.
  */
 function getServerTarget() {
-  if (process.env.PULSE_SERVER) {
-    return process.env.PULSE_SERVER;
+  // 1. Command-line argument: --server=xyz or -s xyz
+  for (let i = 2; i < process.argv.length; i++) {
+    const arg = process.argv[i];
+    if (arg.startsWith('--server=')) {
+      const target = arg.slice(9).trim();
+      try { fs.writeFileSync(SAVED_TARGET_FILE, target, 'utf8'); } catch (_) {}
+      return target;
+    }
+    if ((arg === '--server' || arg === '-s') && process.argv[i + 1]) {
+      const target = process.argv[i + 1].trim();
+      try { fs.writeFileSync(SAVED_TARGET_FILE, target, 'utf8'); } catch (_) {}
+      return target;
+    }
   }
 
+  // 2. Environment variable
+  if (process.env.PULSE_SERVER) {
+    const target = process.env.PULSE_SERVER.trim();
+    try { fs.writeFileSync(SAVED_TARGET_FILE, target, 'utf8'); } catch (_) {}
+    return target;
+  }
+
+  // 3. Saved cloud target from previous run
+  try {
+    if (fs.existsSync(SAVED_TARGET_FILE)) {
+      const saved = fs.readFileSync(SAVED_TARGET_FILE, 'utf8').trim();
+      if (saved) return saved;
+    }
+  } catch (_) {}
+
+  // 4. Local dev auto-detected port
   try {
     if (fs.existsSync(CONFIG_FILE)) {
       const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
@@ -48,6 +76,40 @@ function getServerTarget() {
   } catch (_) {}
 
   return 'localhost:3000';
+}
+
+/**
+ * Resolves appropriate protocols (ws vs wss, http vs https)
+ * based on whether the target is a local dev instance or a cloud deployment (Render, Railway, etc.)
+ */
+function resolveUrls(target) {
+  let cleaned = (target || 'localhost:3000').trim();
+  let isSecure = false;
+
+  if (cleaned.startsWith('https://') || cleaned.startsWith('wss://')) {
+    isSecure = true;
+    cleaned = cleaned.replace(/^https?:\/\//, '').replace(/^wss?:\/\//, '');
+  } else if (cleaned.startsWith('http://') || cleaned.startsWith('ws://')) {
+    isSecure = false;
+    cleaned = cleaned.replace(/^https?:\/\//, '').replace(/^wss?:\/\//, '');
+  } else {
+    // If it's a cloud domain (like .onrender.com, .up.railway.app, or custom domain), use secure WSS / HTTPS
+    if (!cleaned.startsWith('localhost') && !cleaned.startsWith('127.0.0.1') && !/^\d+\.\d+\.\d+\.\d+/.test(cleaned)) {
+      isSecure = true;
+    }
+  }
+
+  // Strip trailing slashes
+  cleaned = cleaned.replace(/\/+$/, '');
+
+  const wsProto = isSecure ? 'wss:' : 'ws:';
+  const httpProto = isSecure ? 'https:' : 'http:';
+
+  return {
+    wsUrl: `${wsProto}//${cleaned}/ws?role=helper`,
+    getWebUrl: (sessionId) => `${httpProto}//${cleaned}/?session=${sessionId}`,
+    displayTarget: cleaned
+  };
 }
 
 let hasOpenedBrowser = false;
@@ -75,14 +137,14 @@ function openBrowser(url) {
 }
 
 function connect(overrideTarget) {
-  const serverTarget = overrideTarget || getServerTarget();
-  const wsUrl = `ws://${serverTarget}/ws?role=helper`;
+  const target = overrideTarget || getServerTarget();
+  const { wsUrl, getWebUrl, displayTarget } = resolveUrls(target);
   console.log(`[Helper] Connecting to PulseCtrl server at ${wsUrl}...`);
 
   ws = new WebSocket(wsUrl);
 
   ws.on('open', () => {
-    console.log(`[Helper] Connected to PulseCtrl Server on ${serverTarget}!`);
+    console.log(`[Helper] Connected to PulseCtrl Server on ${displayTarget}!`);
   });
 
   ws.on('message', async (data) => {
@@ -91,8 +153,7 @@ function connect(overrideTarget) {
 
       if (msg.type === 'session_ready') {
         currentSessionId = msg.sessionId;
-        const port = serverTarget.split(':')[1] || '3000';
-        const webUrl = `http://localhost:${port}/?session=${msg.sessionId}`;
+        const webUrl = getWebUrl(msg.sessionId);
 
         console.log('');
         console.log('='.repeat(60));
