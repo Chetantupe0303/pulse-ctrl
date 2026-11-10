@@ -1,8 +1,6 @@
 <div align="center">
 
-# PulseCtrl
-
-### Your phone. Your laptop. One scan between them.
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0F172A,50:312E81,100:06B6D4&height=190&section=header&text=PulseCtrl&fontSize=56&fontColor=F8FAFC&animation=fadeIn&fontAlignY=38&desc=YOUR%20PHONE.%20YOUR%20LAPTOP.%20ONE%20SCAN.&descSize=15&descAlignY=62" alt="PulseCtrl — Your phone. Your laptop. One scan." width="100%">
 
 Turn a phone into a wireless trackpad and keyboard, paired over your local network with a QR code.
 
