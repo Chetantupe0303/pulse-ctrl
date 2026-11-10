@@ -72,7 +72,46 @@ let activePort = DEFAULT_PORT;
 
 // Active helper socket reference across session lifecycles
 let currentHelperWs = null;
+const laptopWebSockets = new Set();
 let currentLaptopWebWs = null;
+let latestKnownOrigin = null;
+
+function inferOriginFromReq(req) {
+  if (process.env.PUBLIC_URL) {
+    return process.env.PUBLIC_URL.replace(/\/$/, '');
+  }
+  if (!req || !req.headers) return null;
+  const host = req.headers.host;
+  const proto = req.headers['x-forwarded-proto'] || (req.socket && req.socket.encrypted ? 'https' : 'http');
+  if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+    return `${proto}://${host}`;
+  }
+  return null;
+}
+
+function broadcastToLaptop(payload) {
+  const json = typeof payload === 'string' ? payload : JSON.stringify(payload);
+  for (const ws of laptopWebSockets) {
+    if (ws.readyState === 1) {
+      try {
+        ws.send(json);
+      } catch (e) {
+        console.error('[WS Broadcast Error]:', e.message);
+      }
+    }
+  }
+}
+
+sessionManager.broadcastToLaptop = broadcastToLaptop;
+
+// Capture origin for cloud deployments (Railway, Render, Fly.io, custom domains)
+app.use((req, res, next) => {
+  const detected = inferOriginFromReq(req);
+  if (detected) {
+    latestKnownOrigin = detected;
+  }
+  next();
+});
 
 // Serve static assets from /web directory
 const webDir = path.join(__dirname, '..', 'web');
@@ -95,16 +134,30 @@ app.get('/api/info', (req, res) => {
     lanIp,
     port: activePort,
     localUrl: `http://localhost:${activePort}`,
-    lanUrl: `http://${lanIp}:${activePort}`
+    lanUrl: `http://${lanIp}:${activePort}`,
+    publicUrl: latestKnownOrigin || `http://${lanIp}:${activePort}`
   });
 });
 
 /**
  * Generates pairing QR code data URL for a given session.
+ * Supports public cloud deployments (Railway, Render, Fly.io) via PUBLIC_URL or detected origin.
  */
-async function generateQrForSession(sessionId, token) {
-  const lanIp = getLocalIpAddress();
-  const phoneUrl = `http://${lanIp}:${activePort}/phone?session=${sessionId}&token=${token}`;
+async function generateQrForSession(sessionId, token, customOrigin = null) {
+  let origin = process.env.PUBLIC_URL;
+  if (!origin) {
+    if (customOrigin) {
+      origin = customOrigin;
+    } else if (latestKnownOrigin) {
+      origin = latestKnownOrigin;
+    } else {
+      const lanIp = getLocalIpAddress();
+      origin = `http://${lanIp}:${activePort}`;
+    }
+  }
+  origin = origin.replace(/\/$/, '');
+
+  const phoneUrl = `${origin}/phone?session=${sessionId}&token=${token}`;
   const qrDataUrl = await QRCode.toDataURL(phoneUrl, {
     width: 280,
     margin: 2,
@@ -142,18 +195,17 @@ app.get('/api/session', async (req, res) => {
  * Handles automatic re-provisioning of fresh QR sessions whenever a device disconnects.
  * This guarantees the laptop always displays a fresh, working QR code immediately upon disconnection.
  */
-sessionManager.onSessionDisconnect = async ({ helperWs, laptopWebWs }) => {
+sessionManager.onSessionDisconnect = async ({ helperWs }) => {
   try {
     const helper = helperWs || currentHelperWs;
-    const laptop = laptopWebWs || currentLaptopWebWs;
 
-    console.log('[Server] Disconnected. helper readyState:', helper ? helper.readyState : 'null', 'laptop readyState:', laptop ? laptop.readyState : 'null');
     if (helper && helper.readyState === 1) {
-      console.log('[Server] Disconnected. Automatically generating a fresh pairing QR code...');
       const newSession = sessionManager.createSession(helper);
 
-      if (laptop && laptop.readyState === 1) {
-        sessionManager.attachLaptopWeb(newSession.id, laptop);
+      for (const laptop of laptopWebSockets) {
+        if (laptop.readyState === 1) {
+          sessionManager.attachLaptopWeb(newSession.id, laptop);
+        }
       }
 
       const { phoneUrl, qrDataUrl } = await generateQrForSession(newSession.id, newSession.token);
@@ -166,16 +218,14 @@ sessionManager.onSessionDisconnect = async ({ helperWs, laptopWebWs }) => {
         qrDataUrl
       }));
 
-      if (laptop && laptop.readyState === 1) {
-        laptop.send(JSON.stringify({
-          type: 'session_info',
-          sessionId: newSession.id,
-          token: newSession.token,
-          phoneUrl,
-          qrDataUrl,
-          status: 'waiting'
-        }));
-      }
+      broadcastToLaptop({
+        type: 'session_info',
+        sessionId: newSession.id,
+        token: newSession.token,
+        phoneUrl,
+        qrDataUrl,
+        status: 'waiting'
+      });
     }
   } catch (err) {
     console.error('[Server] Error in onSessionDisconnect:', err);
@@ -244,6 +294,7 @@ wss.on('connection', async (ws, req) => {
 
   // --- ROLE: LAPTOP WEB UI (/) ---
   if (role === 'laptop_web') {
+    laptopWebSockets.add(ws);
     currentLaptopWebWs = ws;
     let session = sessionManager.getLatestActiveSession();
 
@@ -295,16 +346,20 @@ wss.on('connection', async (ws, req) => {
               sessionManager.disconnectSession(activeSession.id, 'laptop');
             } else {
               const fresh = sessionManager.createSession(currentHelperWs);
-              sessionManager.attachLaptopWeb(fresh.id, ws);
+              for (const lws of laptopWebSockets) {
+                if (lws.readyState === 1) {
+                  sessionManager.attachLaptopWeb(fresh.id, lws);
+                }
+              }
               const { phoneUrl, qrDataUrl } = await generateQrForSession(fresh.id, fresh.token);
-              ws.send(JSON.stringify({
+              broadcastToLaptop({
                 type: 'session_info',
                 sessionId: fresh.id,
                 token: fresh.token,
                 phoneUrl,
                 qrDataUrl,
                 status: 'waiting'
-              }));
+              });
             }
           }
         }
@@ -314,8 +369,9 @@ wss.on('connection', async (ws, req) => {
     });
 
     ws.on('close', () => {
+      laptopWebSockets.delete(ws);
       if (currentLaptopWebWs === ws) {
-        currentLaptopWebWs = null;
+        currentLaptopWebWs = laptopWebSockets.size > 0 ? Array.from(laptopWebSockets)[0] : null;
       }
     });
 
@@ -439,6 +495,9 @@ function bindPhoneEventHandlers(ws, session) {
 
   ws.on('close', () => {
     console.log(`[WS] Phone socket closed for session ${session.id}`);
+    if (session.pendingPhoneWs === ws) {
+      session.pendingPhoneWs = null;
+    }
     if (session.phoneWs === ws) {
       session.phoneWs = null; // Unbind socket
       // If disconnected without reconnectToken or after grace, trigger disconnect
@@ -446,7 +505,7 @@ function bindPhoneEventHandlers(ws, session) {
         if (!session.phoneWs && session.status === 'connected') {
           sessionManager.disconnectSession(session.id, 'phone');
         }
-      }, 15000); // 15-second grace period for quick network / screen-lock recovery
+      }, 2000); // 2-second grace period for quick network / screen-lock recovery
     }
   });
 }

@@ -37,6 +37,7 @@
   let currentMode = 'trackpad';
   let reconnectAttempts = 0;
   let isExplicitDisconnect = false;
+  let terminalState = false;
 
   // Active modifier keys (Ctrl, Alt, Shift)
   const activeModifiers = new Set();
@@ -140,11 +141,13 @@
         const msg = JSON.parse(event.data);
 
         if (msg.type === 'waiting_approval') {
-          showOverlay('Waiting for Approval', 'Please click "Allow" on your laptop screen.');
+          terminalState = false;
+          showOverlay('Waiting for Approval', 'Please click "Allow" on your laptop screen.', false);
           setStatus('waiting', 'Awaiting approval');
         } else if (msg.type === 'paired') {
           isPaired = true;
           isExplicitDisconnect = false;
+          terminalState = false;
           hideOverlay();
           setStatus('connected', 'Connected');
 
@@ -157,23 +160,27 @@
           }
         } else if (msg.type === 'denied') {
           isPaired = false;
+          terminalState = true;
           clearReconnectData();
-          showOverlay('Connection Denied', 'The laptop denied connection. Please scan again if you wish to connect.', false);
+          showOverlay('Connection Denied', 'The laptop denied connection. Please scan the QR code again.', false);
           setStatus('disconnected', 'Denied');
         } else if (msg.type === 'status' && msg.status === 'disconnected') {
           isPaired = false;
+          terminalState = true;
           clearReconnectData();
-          showOverlay('Disconnected', 'Connection ended. Scan the QR code on your laptop to connect again.', false);
+          showOverlay('Disconnected', 'Connection ended. Scan the new QR code on your laptop to connect again.', false);
           setStatus('disconnected', 'Disconnected');
         } else if (msg.type === 'expired') {
           isPaired = false;
+          terminalState = true;
           clearReconnectData();
-          showOverlay('Session Expired', 'Session timed out. Scan the QR code on your laptop to connect again.', false);
+          showOverlay('Session Expired', 'Session timed out. Scan the new QR code on your laptop to connect again.', false);
           setStatus('disconnected', 'Expired');
         } else if (msg.type === 'error') {
           isPaired = false;
+          terminalState = true;
           clearReconnectData();
-          showOverlay('Connection Error', msg.message || 'Unable to connect. Please scan the QR code again.', false);
+          showOverlay('Connection Error', msg.message || 'Unable to connect. Scan the new QR code on your laptop.', false);
           setStatus('disconnected', 'Error');
         } else if (msg.type === 'mode') {
           setMode(msg.value === 'both' ? 'both' : 'trackpad', false);
@@ -187,9 +194,14 @@
       const hadSession = isPaired;
       isPaired = false;
 
+      // Do not overwrite explicit terminal messages
+      if (terminalState) {
+        return;
+      }
+
       if (isExplicitDisconnect) {
         clearReconnectData();
-        showOverlay('Disconnected', 'You disconnected from the laptop. Scan the QR code to connect again.', false);
+        showOverlay('Disconnected', 'You disconnected from the laptop. Scan the new QR code to connect again.', false);
         setStatus('disconnected', 'Disconnected');
         return;
       }
@@ -202,7 +214,7 @@
         setTimeout(connect, 1500);
       } else {
         clearReconnectData();
-        showOverlay('Disconnected', 'Connection lost. Scan the QR code on your laptop to connect again.', true, 'Try Again');
+        showOverlay('Disconnected', 'Connection lost. Scan the new QR code on your laptop to connect again.', false);
         setStatus('disconnected', 'Disconnected');
       }
     };
@@ -222,11 +234,13 @@
   // Disconnect button
   disconnectBtn.addEventListener('click', () => {
     isExplicitDisconnect = true;
+    terminalState = true;
     clearReconnectData();
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'disconnect' }));
+      try { ws.close(1000, 'User disconnect'); } catch (_) {}
     }
-    showOverlay('Disconnected', 'You disconnected from the laptop. Scan the QR code to connect again.', false);
+    showOverlay('Disconnected', 'You disconnected from the laptop. Scan the new QR code to connect again.', false);
     setStatus('disconnected', 'Disconnected');
   });
 
@@ -513,6 +527,34 @@
         btn.classList.add('active');
       }
     });
+  });
+
+  // Handle mobile browser tab focus, back-forward cache, and new QR scans
+  function checkUrlUpdate() {
+    const currentParams = new URLSearchParams(window.location.search);
+    const newSession = currentParams.get('session');
+    const newToken = currentParams.get('token');
+
+    // If URL has fresh session/token params different from current, reload with fresh state
+    if (newSession && (newSession !== sessionId || newToken !== token)) {
+      clearReconnectData();
+      window.location.reload();
+      return;
+    }
+
+    // If socket is closed and we have valid credentials but aren't in terminal state, reconnect
+    if (!ws || ws.readyState === WebSocket.CLOSED) {
+      if (!terminalState && sessionId && token) {
+        connect();
+      }
+    }
+  }
+
+  window.addEventListener('pageshow', checkUrlUpdate);
+  window.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      checkUrlUpdate();
+    }
   });
 
   // Start connection

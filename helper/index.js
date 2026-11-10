@@ -50,6 +50,14 @@ function getServerTarget() {
   return 'localhost:3000';
 }
 
+let hasOpenedBrowser = false;
+
+function openBrowserOnce(url) {
+  if (hasOpenedBrowser) return;
+  hasOpenedBrowser = true;
+  openBrowser(url);
+}
+
 function openBrowser(url) {
   // Attempt to open the laptop webpage automatically on start
   const startCmd = process.platform === 'win32'
@@ -96,8 +104,8 @@ function connect(overrideTarget) {
         console.log('  Waiting for phone to scan QR code and pair...');
         console.log('');
 
-        // Automatically open the laptop webpage in the browser
-        openBrowser(webUrl);
+        // Automatically open the laptop webpage in the browser once on launch
+        openBrowserOnce(webUrl);
       } else if (msg.type === 'paired') {
         currentMode = msg.mode || 'trackpad';
         console.log(`[Helper] Phone paired successfully! Mode: ${currentMode.toUpperCase()}`);

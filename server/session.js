@@ -109,6 +109,8 @@ class SessionManager {
     this.latestHelperSessionId = null;
     /** Callback invoked when a session disconnects, allowing instant re-provisioning */
     this.onSessionDisconnect = null;
+    /** Broadcast handler to send messages to all active laptop web clients */
+    this.broadcastToLaptop = null;
   }
 
   /**
@@ -258,16 +260,25 @@ class SessionManager {
 
     const deviceName = parseDeviceName(userAgent);
     session.deviceName = deviceName;
+
+    // If an existing pending socket was attached, close it cleanly
+    if (session.pendingPhoneWs && session.pendingPhoneWs !== phoneWs && session.pendingPhoneWs.readyState === 1) {
+      session.pendingPhoneWs.close(1000, 'Replaced by newer connection');
+    }
     session.pendingPhoneWs = phoneWs;
     session.status = 'pending_approval';
 
-    // Notify laptop web UI with clean device name only
-    if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
-      session.laptopWebWs.send(JSON.stringify({
-        type: 'pair_request',
-        sessionId: session.id,
-        deviceName: deviceName
-      }));
+    // Notify laptop web UI with clean device name only (broadcast to all open laptop tabs)
+    const pairRequestMsg = JSON.stringify({
+      type: 'pair_request',
+      sessionId: session.id,
+      deviceName: deviceName
+    });
+
+    if (typeof this.broadcastToLaptop === 'function') {
+      this.broadcastToLaptop(pairRequestMsg);
+    } else if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
+      session.laptopWebWs.send(pairRequestMsg);
     }
 
     // Notify phone that it is awaiting laptop confirmation
@@ -303,12 +314,15 @@ class SessionManager {
         phoneWs.close(4003, 'Denied by laptop');
       }
 
-      if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
-        session.laptopWebWs.send(JSON.stringify({
-          type: 'status',
-          status: 'waiting',
-          message: 'Device connection denied'
-        }));
+      const deniedMsg = JSON.stringify({
+        type: 'status',
+        status: 'waiting',
+        message: 'Device connection denied'
+      });
+      if (typeof this.broadcastToLaptop === 'function') {
+        this.broadcastToLaptop(deniedMsg);
+      } else if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
+        session.laptopWebWs.send(deniedMsg);
       }
       return;
     }
@@ -342,14 +356,17 @@ class SessionManager {
       }));
     }
 
-    // Notify laptop web UI
-    if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
-      session.laptopWebWs.send(JSON.stringify({
-        type: 'status',
-        status: 'connected',
-        mode: session.mode,
-        deviceName: session.deviceName
-      }));
+    // Notify laptop web UI (broadcast to all open laptop tabs)
+    const connectedMsg = JSON.stringify({
+      type: 'status',
+      status: 'connected',
+      mode: session.mode,
+      deviceName: session.deviceName
+    });
+    if (typeof this.broadcastToLaptop === 'function') {
+      this.broadcastToLaptop(connectedMsg);
+    } else if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
+      session.laptopWebWs.send(connectedMsg);
     }
 
     // Notify laptop helper
@@ -387,13 +404,16 @@ class SessionManager {
       }));
     }
 
-    if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
-      session.laptopWebWs.send(JSON.stringify({
-        type: 'status',
-        status: 'connected',
-        mode: session.mode,
-        deviceName: session.deviceName
-      }));
+    const resumedMsg = JSON.stringify({
+      type: 'status',
+      status: 'connected',
+      mode: session.mode,
+      deviceName: session.deviceName
+    });
+    if (typeof this.broadcastToLaptop === 'function') {
+      this.broadcastToLaptop(resumedMsg);
+    } else if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
+      session.laptopWebWs.send(resumedMsg);
     }
   }
 
@@ -418,6 +438,12 @@ class SessionManager {
     if (session.pendingPhoneWs && session.pendingPhoneWs.readyState === 1) {
       session.pendingPhoneWs.send(expireMsg);
       session.pendingPhoneWs.close(4001, reason);
+    }
+
+    if (typeof this.broadcastToLaptop === 'function') {
+      this.broadcastToLaptop(expireMsg);
+    } else if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
+      session.laptopWebWs.send(expireMsg);
     }
 
     const helperWs = session.helperWs;
@@ -459,6 +485,12 @@ class SessionManager {
     }
     if (session.pendingPhoneWs && session.pendingPhoneWs.readyState === 1) {
       session.pendingPhoneWs.close(1000, `Disconnected by ${initiatedBy}`);
+    }
+
+    if (typeof this.broadcastToLaptop === 'function') {
+      this.broadcastToLaptop(disconnectMsg);
+    } else if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
+      session.laptopWebWs.send(disconnectMsg);
     }
 
     const helperWs = session.helperWs;

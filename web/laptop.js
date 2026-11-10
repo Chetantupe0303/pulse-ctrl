@@ -103,7 +103,7 @@
           } else if (msg.status === 'disconnected') {
             hideModal();
             // Disconnected: laptop automatically awaits fresh QR from server
-            setStatus('waiting', 'Waiting for phone');
+            setStatus('waiting', 'Generating fresh QR code...');
           }
         } else if (msg.type === 'mode') {
           const modeLabel = msg.value === 'trackpad' ? 'Mousepad' : (msg.value === 'both' ? 'Both' : msg.value);
