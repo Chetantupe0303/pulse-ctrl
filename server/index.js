@@ -127,6 +127,21 @@ app.get('/phone', (req, res) => {
   res.sendFile(path.join(webDir, 'phone.html'));
 });
 
+// Route to download Windows desktop helper installer
+app.get('/download/windows', (req, res) => {
+  const distDir = path.join(__dirname, '..', 'dist');
+  try {
+    if (fs.existsSync(distDir)) {
+      const files = fs.readdirSync(distDir);
+      const exeFile = files.find(f => f.endsWith('.exe') && !f.includes('blockmap'));
+      if (exeFile) {
+        return res.download(path.join(distDir, exeFile), exeFile);
+      }
+    }
+  } catch (_) {}
+  res.status(404).send('Windows installer not found. Build it with `npm run build:win` or check GitHub releases.');
+});
+
 // Endpoint to fetch network info & server status
 app.get('/api/info', (req, res) => {
   const lanIp = getLocalIpAddress();

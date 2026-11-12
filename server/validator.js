@@ -70,23 +70,25 @@ function validateMessage(msg, currentMode = 'trackpad') {
     return { valid: true, sanitized: { type: 'move', dx: clampedDx, dy: clampedDy } };
   }
 
-  // 4. Click event
+  // 4. Click event (supports click, press/down, and release/up for dragging)
   if (type === 'click') {
-    const { button } = msg;
+    const { button, action } = msg;
     if (!ALLOWED_BUTTONS.has(button)) {
       return { valid: false, error: 'Click button must be "left" or "right"' };
     }
-    return { valid: true, sanitized: { type: 'click', button } };
+    const cleanAction = ['down', 'up', 'click'].includes(action) ? action : 'click';
+    return { valid: true, sanitized: { type: 'click', button, action: cleanAction } };
   }
 
-  // 5. Scroll event
+  // 5. Scroll event (supports vertical dy and horizontal dx)
   if (type === 'scroll') {
-    const { dy } = msg;
+    const { dy, dx } = msg;
     if (typeof dy !== 'number' || !Number.isFinite(dy)) {
       return { valid: false, error: 'Scroll requires finite dy number' };
     }
     const clampedDy = Math.max(-500, Math.min(500, dy));
-    return { valid: true, sanitized: { type: 'scroll', dy: clampedDy } };
+    const clampedDx = typeof dx === 'number' && Number.isFinite(dx) ? Math.max(-500, Math.min(500, dx)) : 0;
+    return { valid: true, sanitized: { type: 'scroll', dy: clampedDy, dx: clampedDx } };
   }
 
   // 6. Text input event
