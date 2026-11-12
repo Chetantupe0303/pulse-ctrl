@@ -16,8 +16,6 @@
 
   // Helper connection prompt elements
   const helperNotice = document.getElementById('helperNotice');
-  const helperCommandCode = document.getElementById('helperCommandCode');
-  const btnCopyCommand = document.getElementById('btnCopyCommand');
 
   // Modal elements
   const allowModal = document.getElementById('allowModal');
@@ -94,13 +92,9 @@
             activeModeBadge.textContent = 'Mode: ' + modeLabel;
           }
         } else if (msg.type === 'waiting_helper') {
-          setStatus('waiting', 'Waiting for laptop helper...');
+          setStatus('waiting', 'PulseCtrl Desktop App Required');
           qrSection.style.display = 'none';
           if (helperNotice) {
-            const host = window.location.host;
-            const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
-            const cmd = isLocal ? 'npm run helper' : `node helper/index.js --server=${host}`;
-            if (helperCommandCode) helperCommandCode.textContent = cmd;
             helperNotice.style.display = 'block';
           }
         } else if (msg.type === 'pair_request') {
@@ -172,29 +166,6 @@
     btnNewQR.addEventListener('click', () => {
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'request_new_qr' }));
-      }
-    });
-  }
-
-  // Handle Copy Command button
-  if (btnCopyCommand) {
-    btnCopyCommand.addEventListener('click', () => {
-      const code = helperCommandCode ? helperCommandCode.textContent : '';
-      if (code) {
-        navigator.clipboard.writeText(code).then(() => {
-          btnCopyCommand.textContent = 'Copied!';
-          setTimeout(() => { btnCopyCommand.textContent = 'Copy'; }, 2000);
-        }).catch(() => {
-          // Fallback if clipboard API not available
-          const temp = document.createElement('textarea');
-          temp.value = code;
-          document.body.appendChild(temp);
-          temp.select();
-          document.execCommand('copy');
-          document.body.removeChild(temp);
-          btnCopyCommand.textContent = 'Copied!';
-          setTimeout(() => { btnCopyCommand.textContent = 'Copy'; }, 2000);
-        });
       }
     });
   }

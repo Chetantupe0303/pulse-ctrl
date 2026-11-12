@@ -133,13 +133,29 @@ app.get('/download/windows', (req, res) => {
   try {
     if (fs.existsSync(distDir)) {
       const files = fs.readdirSync(distDir);
-      const exeFile = files.find(f => f.endsWith('.exe') && !f.includes('blockmap'));
+      const exeFile = files.find(f => f.endsWith('.exe') && !f.includes('blockmap') && !f.includes('__uninstaller'));
       if (exeFile) {
         return res.download(path.join(distDir, exeFile), exeFile);
       }
     }
   } catch (_) {}
-  res.status(404).send('Windows installer not found. Build it with `npm run build:win` or check GitHub releases.');
+
+  // Fallback: Check if installer is in web/downloads
+  const webDownloadsDir = path.join(__dirname, '..', 'web', 'downloads');
+  try {
+    if (fs.existsSync(webDownloadsDir)) {
+      const files = fs.readdirSync(webDownloadsDir);
+      const exeFile = files.find(f => f.endsWith('.exe'));
+      if (exeFile) {
+        return res.download(path.join(webDownloadsDir, exeFile), exeFile);
+      }
+    }
+  } catch (_) {}
+
+  // Fallback for cloud/Render deployments: redirect directly to latest GitHub release download
+  const GITHUB_REPO = process.env.GITHUB_REPO || 'Chetantupe0303/pulse-ctrl';
+  const GITHUB_RELEASE_URL = `https://github.com/${GITHUB_REPO}/releases/latest/download/PulseCtrl-Helper-Setup-1.0.0.exe`;
+  return res.redirect(302, GITHUB_RELEASE_URL);
 });
 
 // Endpoint to fetch network info & server status
@@ -336,7 +352,7 @@ wss.on('connection', async (ws, req) => {
       // Waiting for helper to register
       ws.send(JSON.stringify({
         type: 'waiting_helper',
-        message: 'Waiting for Laptop Helper. Run `npm run helper` on your laptop.'
+        message: 'Waiting for Laptop Helper. Launch the PulseCtrl desktop app.'
       }));
     }
 
