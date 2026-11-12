@@ -2,11 +2,13 @@
   "name": "pulse-ctrl",
   "version": "1.0.0",
   "description": "Wireless phone trackpad and keyboard for your laptop",
-  "main": "server/index.js",
+  "main": "helper/main.js",
   "scripts": {
     "start": "node server/index.js",
     "server": "node server/index.js",
-    "helper": "node helper/index.js",
+    "helper": "electron .",
+    "helper:cli": "node helper/index.js",
+    "build:win": "electron-builder --win nsis",
     "test": "node test/end-to-end-test.js",
     "test:lifecycle": "node test/reconnect-test.js"
   },
@@ -24,5 +26,46 @@
     "qr-pairing"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^45.3.1",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "com.pulsectrl.helper",
+    "productName": "PulseCtrl Helper",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "PulseCtrl Helper",
+      "artifactName": "PulseCtrl-Helper-Setup-${version}.${ext}"
+    },
+    "files": [
+      "helper/**/*",
+      "assets/**/*",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "**/*.node",
+      "**/*.dll"
+    ]
+  }
 }

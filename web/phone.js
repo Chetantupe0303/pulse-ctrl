@@ -286,7 +286,126 @@
   });
 
   // -------------------------------------------------------------
-  // MOUSEPAD ENGINE (Ultra-responsive, 60fps, rock-solid deltas)
+  // SENSITIVITY, TOOLS & WINDOW MANAGEMENT
+  // -------------------------------------------------------------
+  let mouseSensitivity = 100;
+  try {
+    const savedSens = localStorage.getItem('pulse_mouse_sensitivity');
+    if (savedSens) {
+      mouseSensitivity = Math.max(20, Math.min(300, parseInt(savedSens, 10)));
+    }
+  } catch (_) {}
+
+  const sensitivitySlider = document.getElementById('sensitivitySlider');
+  const sensitivityDisplay = document.getElementById('sensitivityDisplay');
+  const headerSensLabel = document.getElementById('headerSensLabel');
+
+  function updateSensitivity(val) {
+    mouseSensitivity = Math.max(20, Math.min(300, parseInt(val, 10)));
+    if (sensitivitySlider) sensitivitySlider.value = mouseSensitivity;
+    if (sensitivityDisplay) sensitivityDisplay.textContent = mouseSensitivity + '%';
+    if (headerSensLabel) headerSensLabel.textContent = mouseSensitivity + '%';
+    try {
+      localStorage.setItem('pulse_mouse_sensitivity', mouseSensitivity.toString());
+    } catch (_) {}
+  }
+
+  if (sensitivitySlider) {
+    sensitivitySlider.value = mouseSensitivity;
+    if (sensitivityDisplay) sensitivityDisplay.textContent = mouseSensitivity + '%';
+    if (headerSensLabel) headerSensLabel.textContent = mouseSensitivity + '%';
+    sensitivitySlider.addEventListener('input', (e) => {
+      updateSensitivity(e.target.value);
+    });
+  }
+
+  // Toggle Windows & Navigation Drawer
+  const btnToggleTools = document.getElementById('btnToggleTools');
+  const navDrawer = document.getElementById('navDrawer');
+  if (btnToggleTools && navDrawer) {
+    btnToggleTools.addEventListener('click', () => {
+      const isHidden = navDrawer.style.display === 'none';
+      navDrawer.style.display = isHidden ? 'block' : 'none';
+      btnToggleTools.classList.toggle('active', isHidden);
+    });
+  }
+
+  // Quick Zoom buttons
+  const btnZoomIn = document.getElementById('btnZoomIn');
+  const btnZoomOut = document.getElementById('btnZoomOut');
+  if (btnZoomIn) {
+    btnZoomIn.addEventListener('click', () => {
+      send({ type: 'key', key: '=', modifiers: ['control'] });
+    });
+  }
+  if (btnZoomOut) {
+    btnZoomOut.addEventListener('click', () => {
+      send({ type: 'key', key: '-', modifiers: ['control'] });
+    });
+  }
+
+  // Navigation & Window Management Key Action mappings
+  const NAV_KEY_ACTIONS = {
+    'alt-tab': { key: 'Tab', modifiers: ['alt'] },
+    'desktop': { key: 'd', modifiers: ['win'] },
+    'maximize': { key: 'ArrowUp', modifiers: ['win'] },
+    'minimize': { key: 'ArrowDown', modifiers: ['win'] },
+    'snap-left': { key: 'ArrowLeft', modifiers: ['win'] },
+    'snap-right': { key: 'ArrowRight', modifiers: ['win'] },
+    'close-win': { key: 'F4', modifiers: ['alt'] },
+    'back': { key: 'ArrowLeft', modifiers: ['alt'] },
+    'forward': { key: 'ArrowRight', modifiers: ['alt'] },
+    'refresh': { key: 'F5', modifiers: [] },
+    'new-tab': { key: 't', modifiers: ['control'] }
+  };
+
+  document.querySelectorAll('.btn-nav-action[data-nav]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const actionName = btn.dataset.nav;
+      const mapping = NAV_KEY_ACTIONS[actionName];
+      if (mapping) {
+        send({
+          type: 'key',
+          key: mapping.key,
+          modifiers: mapping.modifiers
+        });
+      }
+    });
+  });
+
+  // Clicking & Dragging Lock state
+  let isDragLocked = false;
+  const btnDragToggle = document.getElementById('btnDragToggle');
+  const btnDragToggleBoth = document.getElementById('btnDragToggleBoth');
+
+  function setDragLock(locked) {
+    isDragLocked = locked;
+    const text = locked ? '✋ Drag: ON' : '✋ Drag: OFF';
+    const textBoth = locked ? '✋ Dragging' : '✋ Drag';
+    if (btnDragToggle) {
+      btnDragToggle.textContent = text;
+      btnDragToggle.classList.toggle('active', locked);
+    }
+    if (btnDragToggleBoth) {
+      btnDragToggleBoth.textContent = textBoth;
+      btnDragToggleBoth.classList.toggle('active', locked);
+    }
+    send({
+      type: 'click',
+      button: 'left',
+      action: locked ? 'down' : 'up'
+    });
+  }
+
+  function toggleDragLock() {
+    setDragLock(!isDragLocked);
+  }
+
+  if (btnDragToggle) btnDragToggle.addEventListener('click', toggleDragLock);
+  if (btnDragToggleBoth) btnDragToggleBoth.addEventListener('click', toggleDragLock);
+
+  // -------------------------------------------------------------
+  // MOUSEPAD ENGINE (Sensitivity, Dragging, Scrolling & Zooming)
   // -------------------------------------------------------------
   function setupTrackpadSurface(element) {
     if (!element) return;
@@ -298,11 +417,23 @@
     let initialTouchX = 0;
     let initialTouchY = 0;
     let lastScrollY = 0;
+    let lastScrollX = 0;
     let hasMoved = false;
+
+    // Double-tap & hold drag state
+    let lastTapEndTime = 0;
+    let lastTapX = 0;
+    let lastTapY = 0;
+    let isDoubleTapDrag = false;
+
+    // Pinch-to-zoom state
+    let initialPinchDist = 0;
+    let lastZoomTime = 0;
 
     let pendingDx = 0;
     let pendingDy = 0;
     let pendingScrollDy = 0;
+    let pendingScrollDx = 0;
     let lastSendTime = 0;
 
     function flushDeltas() {
@@ -316,12 +447,14 @@
         pendingDy = 0;
       }
 
-      if (pendingScrollDy !== 0) {
+      if (pendingScrollDy !== 0 || pendingScrollDx !== 0) {
         send({
           type: 'scroll',
-          dy: Math.round(pendingScrollDy)
+          dy: Math.round(pendingScrollDy),
+          dx: Math.round(pendingScrollDx)
         });
         pendingScrollDy = 0;
+        pendingScrollDx = 0;
       }
     }
 
@@ -343,8 +476,21 @@
         lastY = e.touches[0].clientY;
         initialTouchX = lastX;
         initialTouchY = lastY;
+
+        // Check for double-tap and hold (start drag gesture)
+        const timeSinceLastTap = touchStartTime - lastTapEndTime;
+        const distFromLastTap = Math.hypot(lastX - lastTapX, lastY - lastTapY);
+        if (timeSinceLastTap < 300 && distFromLastTap < 35 && !isDragLocked) {
+          isDoubleTapDrag = true;
+          send({ type: 'click', button: 'left', action: 'down' });
+        }
       } else if (e.touches.length === 2) {
+        lastScrollX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
         lastScrollY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        initialPinchDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
       }
     }, { passive: false });
 
@@ -353,7 +499,7 @@
       maxTouchCount = Math.max(maxTouchCount, e.touches.length);
 
       if (e.touches.length === 1) {
-        // 1-finger mouse movement
+        // 1-finger mouse movement (with percentage sensitivity scaling)
         const currentX = e.touches[0].clientX;
         const currentY = e.touches[0].clientY;
 
@@ -367,20 +513,50 @@
           hasMoved = true;
         }
 
-        // Apply smooth trackpad sensitivity
-        pendingDx += dx * 1.5;
-        pendingDy += dy * 1.5;
+        // Apply sensitivity percentage (100% = 1.5 multiplier)
+        const sensMultiplier = mouseSensitivity / 100;
+        pendingDx += dx * 1.5 * sensMultiplier;
+        pendingDy += dy * 1.5 * sensMultiplier;
         checkThrottle();
 
       } else if (e.touches.length === 2) {
-        // 2-finger vertical scroll
+        // 2-finger gesture: Scroll or Pinch-Zoom
+        const currentPinchDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const pinchDelta = currentPinchDist - initialPinchDist;
+
+        // If finger distance changes significantly, interpret as Pinch-to-Zoom
+        const now = Date.now();
+        if (Math.abs(pinchDelta) > 30 && now - lastZoomTime > 180) {
+          lastZoomTime = now;
+          hasMoved = true;
+          if (pinchDelta > 0) {
+            // Pinch-out: Zoom In (Ctrl + =)
+            send({ type: 'key', key: '=', modifiers: ['control'] });
+          } else {
+            // Pinch-in: Zoom Out (Ctrl + -)
+            send({ type: 'key', key: '-', modifiers: ['control'] });
+          }
+          initialPinchDist = currentPinchDist;
+          return;
+        }
+
+        // Otherwise, 2-finger 2D scrolling (vertical dy + horizontal dx)
+        const currentScrollX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
         const currentScrollY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-        const scrollDelta = currentScrollY - lastScrollY;
+
+        const scrollDeltaX = currentScrollX - lastScrollX;
+        const scrollDeltaY = currentScrollY - lastScrollY;
+
+        lastScrollX = currentScrollX;
         lastScrollY = currentScrollY;
 
         hasMoved = true;
 
-        pendingScrollDy += -scrollDelta * 1.4;
+        pendingScrollDy += -scrollDeltaY * 1.4;
+        pendingScrollDx += -scrollDeltaX * 1.4;
         checkThrottle();
       }
     }, { passive: false });
@@ -388,26 +564,42 @@
     element.addEventListener('touchend', (e) => {
       const elapsed = Date.now() - touchStartTime;
 
-      // Tap detection (single-finger = left click, two-finger = right click)
-      if (!hasMoved && elapsed < 350) {
+      if (isDoubleTapDrag) {
+        // End double-tap drag on lift
+        isDoubleTapDrag = false;
+        send({ type: 'click', button: 'left', action: 'up' });
+      } else if (!hasMoved && elapsed < 350) {
+        // Tap detection (single-finger = left click, two-finger = right click)
         if (maxTouchCount === 1) {
-          send({ type: 'click', button: 'left' });
+          // If drag locked, tapping can release it
+          if (isDragLocked) {
+            setDragLock(false);
+          } else {
+            send({ type: 'click', button: 'left' });
+            lastTapEndTime = Date.now();
+            lastTapX = lastX;
+            lastTapY = lastY;
+          }
         } else if (maxTouchCount === 2) {
           send({ type: 'click', button: 'right' });
         }
       }
 
       if (e.touches.length === 0) {
-        // Flush remaining deltas when fingers lift
         flushDeltas();
         maxTouchCount = 0;
       }
     }, { passive: false });
 
     element.addEventListener('touchcancel', () => {
+      if (isDoubleTapDrag) {
+        isDoubleTapDrag = false;
+        send({ type: 'click', button: 'left', action: 'up' });
+      }
       pendingDx = 0;
       pendingDy = 0;
       pendingScrollDy = 0;
+      pendingScrollDx = 0;
       maxTouchCount = 0;
     });
   }

@@ -20,13 +20,54 @@
       <button id="phoneDisconnectBtn" class="btn-header-disconnect">Disconnect</button>
     </header>
 
-    <!-- 2-Mode Segmented Switcher -->
+    <!-- 2-Mode Segmented Switcher & Tools Toggle -->
     <nav class="mode-segmented-wrap">
       <div class="segmented-control">
         <button class="tab-btn active" data-mode="trackpad">Mousepad</button>
         <button class="tab-btn" data-mode="both">Both</button>
       </div>
+      <button id="btnToggleTools" class="btn-header-tools" title="Sensitivity & Window Management">
+        <span>⚙️</span> <span id="headerSensLabel">100%</span>
+      </button>
     </nav>
+
+    <!-- Quick Tools: Sensitivity, Zoom, Window & Navigation Drawer -->
+    <div id="quickToolbar" class="quick-toolbar">
+      <div class="quick-tool-row">
+        <div class="sensitivity-group">
+          <span class="tool-label">Sens</span>
+          <input type="range" id="sensitivitySlider" min="20" max="300" step="5" value="100" class="sensitivity-slider">
+          <span id="sensitivityDisplay" class="sensitivity-pill">100%</span>
+        </div>
+        <div class="zoom-group">
+          <button class="btn-zoom" id="btnZoomOut" title="Zoom Out (Ctrl -)">−</button>
+          <span class="tool-label">Zoom</span>
+          <button class="btn-zoom" id="btnZoomIn" title="Zoom In (Ctrl +)">+</button>
+        </div>
+      </div>
+
+      <!-- Collapsible Window Management & Navigation Drawer -->
+      <div id="navDrawer" class="nav-drawer" style="display: none;">
+        <div class="nav-section-title">Window Management</div>
+        <div class="nav-btn-grid">
+          <button class="btn-nav-action" data-nav="alt-tab">🗔 Alt+Tab</button>
+          <button class="btn-nav-action" data-nav="desktop">🖥️ Desktop</button>
+          <button class="btn-nav-action" data-nav="maximize">⛶ Maximize</button>
+          <button class="btn-nav-action" data-nav="minimize">🗕 Minimize</button>
+          <button class="btn-nav-action" data-nav="snap-left">◧ Snap Left</button>
+          <button class="btn-nav-action" data-nav="snap-right">◨ Snap Right</button>
+          <button class="btn-nav-action danger" data-nav="close-win">✕ Alt+F4</button>
+        </div>
+
+        <div class="nav-section-title">Navigation</div>
+        <div class="nav-btn-grid">
+          <button class="btn-nav-action" data-nav="back">← Back</button>
+          <button class="btn-nav-action" data-nav="forward">Forward →</button>
+          <button class="btn-nav-action" data-nav="refresh">↻ Refresh</button>
+          <button class="btn-nav-action" data-nav="new-tab">+ New Tab</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Content Area with 2 Modes -->
     <main class="content-area">
@@ -37,13 +78,14 @@
             <div class="trackpad-guide"></div>
             <div class="trackpad-hint">
               Drag to move cursor<br>
-              1-finger tap: left click<br>
-              2-finger tap: right click<br>
-              2-finger drag: scroll
+              1-finger tap: left click • Double-tap &amp; hold: drag<br>
+              2-finger drag: scroll • 2-finger pinch: zoom<br>
+              2-finger tap: right click
             </div>
           </div>
           <div class="click-bar">
             <button class="btn-click" id="btnLeftClick">Left Click</button>
+            <button class="btn-click btn-drag" id="btnDragToggle">✋ Drag: OFF</button>
             <button class="btn-click" id="btnRightClick">Right Click</button>
           </div>
         </div>
@@ -57,13 +99,14 @@
             <div id="touchSurfaceBoth" class="trackpad-surface">
               <div class="trackpad-guide"></div>
               <div class="trackpad-hint">
-                Mousepad<br>
-                Drag to move • Tap to click
+                Drag to move • Tap to click<br>
+                2-finger: scroll/zoom • Double-tap: drag
               </div>
             </div>
             <div class="click-bar" style="height: 38px;">
-              <button class="btn-click" id="btnLeftClickBoth" style="font-size: 12px;">Left Click</button>
-              <button class="btn-click" id="btnRightClickBoth" style="font-size: 12px;">Right Click</button>
+              <button class="btn-click" id="btnLeftClickBoth" style="font-size: 12px;">Left</button>
+              <button class="btn-click btn-drag" id="btnDragToggleBoth" style="font-size: 12px;">✋ Drag</button>
+              <button class="btn-click" id="btnRightClickBoth" style="font-size: 12px;">Right</button>
             </div>
           </div>
 

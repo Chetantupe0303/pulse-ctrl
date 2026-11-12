@@ -26,7 +26,68 @@ const KEY_MAP = {
   arrowleft: Key.Left,
   left: Key.Left,
   arrowright: Key.Right,
-  right: Key.Right
+  right: Key.Right,
+  home: Key.Home,
+  end: Key.End,
+  pageup: Key.PageUp,
+  pagedown: Key.PageDown,
+  delete: Key.Delete,
+  del: Key.Delete,
+  f1: Key.F1,
+  f2: Key.F2,
+  f3: Key.F3,
+  f4: Key.F4,
+  f5: Key.F5,
+  f6: Key.F6,
+  f7: Key.F7,
+  f8: Key.F8,
+  f9: Key.F9,
+  f10: Key.F10,
+  f11: Key.F11,
+  f12: Key.F12,
+  plus: Key.Add,
+  add: Key.Add,
+  equal: Key.Equal,
+  '=': Key.Equal,
+  minus: Key.Minus,
+  subtract: Key.Subtract,
+  '-': Key.Minus,
+  '0': Key.Num0,
+  '1': Key.Num1,
+  '2': Key.Num2,
+  '3': Key.Num3,
+  '4': Key.Num4,
+  '5': Key.Num5,
+  '6': Key.Num6,
+  '7': Key.Num7,
+  '8': Key.Num8,
+  '9': Key.Num9,
+  a: Key.A,
+  b: Key.B,
+  c: Key.C,
+  d: Key.D,
+  e: Key.E,
+  f: Key.F,
+  g: Key.G,
+  h: Key.H,
+  i: Key.I,
+  j: Key.J,
+  k: Key.K,
+  l: Key.L,
+  m: Key.M,
+  n: Key.N,
+  o: Key.O,
+  p: Key.P,
+  q: Key.Q,
+  r: Key.R,
+  s: Key.S,
+  t: Key.T,
+  u: Key.U,
+  v: Key.V,
+  w: Key.W,
+  x: Key.X,
+  y: Key.Y,
+  z: Key.Z
 };
 
 const MODIFIER_MAP = {
@@ -37,7 +98,9 @@ const MODIFIER_MAP = {
   command: Key.LeftSuper,
   cmd: Key.LeftSuper,
   meta: Key.LeftSuper,
-  win: Key.LeftSuper
+  win: Key.LeftSuper,
+  windows: Key.LeftSuper,
+  super: Key.LeftSuper
 };
 
 /**
@@ -85,20 +148,32 @@ async function executeEvent(event, currentMode = 'trackpad') {
       }
 
       case 'click': {
-        if (event.button === 'right') {
-          await mouse.rightClick();
+        const btn = event.button === 'right' ? Button.RIGHT : Button.LEFT;
+        if (event.action === 'down') {
+          await mouse.pressButton(btn);
+        } else if (event.action === 'up') {
+          await mouse.releaseButton(btn);
         } else {
-          await mouse.leftClick();
+          if (event.button === 'right') {
+            await mouse.rightClick();
+          } else {
+            await mouse.leftClick();
+          }
         }
         break;
       }
 
       case 'scroll': {
-        const { dy } = event;
+        const { dy, dx } = event;
         if (dy > 0) {
           await mouse.scrollDown(Math.abs(dy));
         } else if (dy < 0) {
           await mouse.scrollUp(Math.abs(dy));
+        }
+        if (dx > 0) {
+          await mouse.scrollRight(Math.abs(dx));
+        } else if (dx < 0) {
+          await mouse.scrollLeft(Math.abs(dx));
         }
         break;
       }

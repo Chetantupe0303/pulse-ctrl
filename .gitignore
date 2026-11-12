@@ -1,4 +1,6 @@
 node_modules
+dist
+.pulse-target.txt
 .DS_Store
 Thumbs.db
 *.log
