@@ -38,7 +38,7 @@
     } else if (state === 'waiting') {
       qrSection.style.display = 'flex';
       connectedSection.classList.remove('active');
-      disconnectBtn.disabled = true;
+      disconnectBtn.disabled = false;
     } else if (state === 'disconnected') {
       connectedSection.classList.remove('active');
       disconnectBtn.disabled = true;
@@ -56,7 +56,10 @@
 
   function connectWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws?role=laptop_web`;
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session');
+    const approvalToken = params.get('approval');
+    const wsUrl = `${protocol}//${window.location.host}/ws?role=laptop_web&session=${encodeURIComponent(sessionId || '')}&approval=${encodeURIComponent(approvalToken || '')}`;
 
     ws = new WebSocket(wsUrl);
 
@@ -70,6 +73,10 @@
 
         if (msg.type === 'session_info') {
           currentSessionId = msg.sessionId;
+          const pageUrl = new URL(window.location.href);
+          pageUrl.searchParams.set('session', msg.sessionId);
+          if (msg.approvalToken) pageUrl.searchParams.set('approval', msg.approvalToken);
+          window.history.replaceState({}, '', pageUrl);
           hideModal();
           if (helperNotice) helperNotice.style.display = 'none';
           qrSection.style.display = 'flex';
@@ -92,7 +99,12 @@
             activeModeBadge.textContent = 'Mode: ' + modeLabel;
           }
         } else if (msg.type === 'waiting_helper') {
-          setStatus('waiting', 'PulseCtrl Desktop App Required');
+          const pageUrl = new URL(window.location.href);
+          pageUrl.searchParams.delete('session');
+          pageUrl.searchParams.delete('approval');
+          window.history.replaceState({}, '', pageUrl);
+          setStatus('disconnected', 'Start the local helper');
+          disconnectBtn.disabled = true;
           qrSection.style.display = 'none';
           if (helperNotice) {
             helperNotice.style.display = 'block';

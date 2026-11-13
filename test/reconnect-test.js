@@ -16,6 +16,7 @@ async function runReconnectTests() {
   const helperWs = new WebSocket(`ws://localhost:${TEST_PORT}/ws?role=helper`);
   let initialSessionId = null;
   let initialToken = null;
+  let approvalToken = null;
 
   await new Promise((resolve) => {
     const onHelperMsg = (data) => {
@@ -23,6 +24,7 @@ async function runReconnectTests() {
       if (msg.type === 'session_ready') {
         initialSessionId = msg.sessionId;
         initialToken = msg.token;
+        approvalToken = msg.approvalToken;
         helperWs.removeListener('message', onHelperMsg);
         resolve();
       }
@@ -32,7 +34,7 @@ async function runReconnectTests() {
   console.log(`[2] Helper registered initial session: ${initialSessionId}`);
 
   // Connect laptop web
-  const laptopWs = new WebSocket(`ws://localhost:${TEST_PORT}/ws?role=laptop_web`);
+  const laptopWs = new WebSocket(`ws://localhost:${TEST_PORT}/ws?role=laptop_web&session=${initialSessionId}&approval=${approvalToken}`);
   await new Promise((resolve) => {
     laptopWs.once('message', (data) => {
       resolve();

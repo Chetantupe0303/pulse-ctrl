@@ -1,16 +1,11 @@
 /**
- * PulseCtrl - Laptop Helper (CLI entry point)
- * Connects to the PulseCtrl server and executes mouse and keyboard events.
+ * PulseCtrl local laptop helper. Run the server before starting this process.
  */
 
 const { exec } = require('child_process');
 const { PulseHelperClient } = require('./client');
 
-let hasOpenedBrowser = false;
-
 function openBrowserOnce(url) {
-  if (hasOpenedBrowser) return;
-  hasOpenedBrowser = true;
   const startCmd = process.platform === 'win32'
     ? `start "" "${url}"`
     : process.platform === 'darwin'
@@ -21,6 +16,11 @@ function openBrowserOnce(url) {
 }
 
 const client = new PulseHelperClient();
+let openPageForNextSession = true;
+
+client.on('status', ({ status }) => {
+  if (status === 'disconnected') openPageForNextSession = true;
+});
 
 client.on('session_ready', (session) => {
   console.log('');
@@ -30,10 +30,14 @@ client.on('session_ready', (session) => {
   console.log(`  Laptop Web: ${session.webUrl}`);
   console.log(`  Phone URL:  ${session.phoneUrl}`);
   console.log('='.repeat(60));
-  console.log('  Waiting for phone to scan QR code and pair...');
+  console.log('  The local laptop page shows the QR code and approval prompt.');
+  console.log('  Waiting for phone to scan and request approval...');
   console.log('');
 
-  openBrowserOnce(session.webUrl);
+  if (openPageForNextSession) {
+    openBrowserOnce(session.webUrl);
+    openPageForNextSession = false;
+  }
 });
 
 client.connect();

@@ -1,0 +1,10 @@
+{
+  "name": "pulse-ctrl-server",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node index.js",
+    "server": "node index.js",
+    "start:server": "node index.js"
+  }
+}

@@ -27,7 +27,7 @@ async function runEndToEndTests() {
 
   // Connect helper
   const helperWs = new WebSocket(`ws://localhost:${TEST_PORT}/ws?role=helper`);
-  let sessionId, token;
+  let sessionId, token, approvalToken;
 
   await new Promise((resolve, reject) => {
     helperWs.on('message', (data) => {
@@ -35,6 +35,7 @@ async function runEndToEndTests() {
       if (msg.type === 'session_ready') {
         sessionId = msg.sessionId;
         token = msg.token;
+        approvalToken = msg.approvalToken;
         resolve();
       }
     });
@@ -43,7 +44,7 @@ async function runEndToEndTests() {
   console.log(`[2] Helper registered session: ${sessionId}`);
 
   // Connect laptop web
-  const laptopWs = new WebSocket(`ws://localhost:${TEST_PORT}/ws?role=laptop_web&session=${sessionId}`);
+  const laptopWs = new WebSocket(`ws://localhost:${TEST_PORT}/ws?role=laptop_web&session=${sessionId}&approval=${approvalToken}`);
   await new Promise((resolve) => {
     laptopWs.on('message', (data) => {
       const msg = JSON.parse(data.toString());

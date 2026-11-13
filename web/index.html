@@ -3,97 +3,47 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PulseCtrl — Wireless Trackpad & Keyboard</title>
+  <title>PulseCtrl — Local Wireless Trackpad</title>
   <link rel="stylesheet" href="laptop.css">
 </head>
 <body>
   <div class="container">
     <header class="header">
       <h1 class="brand-title">PulseCtrl</h1>
-      <p class="brand-subtitle">Wireless Trackpad &amp; Keyboard for your Laptop</p>
+      <p class="brand-subtitle">Local wireless trackpad and keyboard</p>
     </header>
-
     <main class="card">
-      <!-- Status Indicator Pill -->
       <div id="statusPill" class="status-pill status-waiting">
-        <span class="status-dot"></span>
-        <span id="statusText">Waiting for phone</span>
+        <span class="status-dot"></span><span id="statusText">Waiting for local helper</span>
       </div>
-
-      <!-- Helper Connect Instruction (Shown when waiting for laptop helper) -->
-      <div id="helperNotice" style="display: none; margin-bottom: 24px; text-align: center; background: #0f121a; border: 1px solid var(--card-border); border-radius: 8px; padding: 22px 16px;">
-        <div style="font-size: 36px; margin-bottom: 8px;">💻</div>
-        <p style="font-size: 16px; font-weight: 700; margin-bottom: 6px; color: #ffffff;">Launch or Install PulseCtrl</p>
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 18px; line-height: 1.5; max-width: 360px; margin-left: auto; margin-right: auto;">
-          Open the <strong>PulseCtrl Helper</strong> app on your laptop to display your pairing QR code. If not installed yet, download it below:
-        </p>
-        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-          <a href="/download/windows" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none; padding: 10px 18px; font-size: 13px; font-weight: 600; border-radius: 6px;">
-            <span>🪟</span> Direct Download (.exe)
-          </a>
-          <a href="https://github.com/Chetantupe0303/pulse-ctrl/releases" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none; padding: 10px 16px; font-size: 13px; font-weight: 600; border-radius: 6px;">
-            <span>📦</span> GitHub Releases ↗
-          </a>
-        </div>
+      <div id="helperNotice" style="display:none; margin-bottom:24px; text-align:center; color:var(--text-muted); line-height:1.6">
+        Start the server and helper on this laptop with <code>npm run dev</code>, or use <code>npm run start:server</code> and <code>npm run start:helper</code> in separate terminals.
       </div>
-
-      <!-- QR Code Section -->
-      <div id="qrSection" class="qr-container">
-        <div class="qr-box">
-          <img id="qrImage" src="" alt="Pairing QR Code">
-        </div>
-        <p class="qr-instruction">Scan with your phone's camera on the same Wi-Fi network to connect.</p>
+      <div id="qrSection" class="qr-container" style="display:none">
+        <div class="qr-box"><img id="qrImage" src="" alt="Local pairing QR code"></div>
+        <p class="qr-instruction">Scan with your phone while it is connected to the same Wi-Fi network.</p>
       </div>
-
-      <!-- Connected State Information -->
       <div id="connectedSection" class="connected-info">
-        <p style="font-size: 14px; margin-bottom: 6px; color: var(--text-main);">
-          Connected device: <strong id="connectedDeviceName" style="color: #ffffff;">Phone</strong>
-        </p>
+        <p style="font-size:14px; margin-bottom:6px">Connected device: <strong id="connectedDeviceName">Phone</strong></p>
         <div id="activeModeBadge" class="mode-badge">Mode: Mousepad</div>
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
-          Use your phone screen to move the cursor, click, scroll, and type.
-        </p>
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px">Use your phone to move, click, scroll, and type.</p>
       </div>
-
-      <!-- Actions -->
-      <div style="display: flex; gap: 8px; justify-content: center;">
+      <div style="display:flex; gap:8px; justify-content:center">
         <button id="btnNewQR" class="btn">New QR Code</button>
         <button id="disconnectBtn" class="btn btn-danger" disabled>Disconnect</button>
       </div>
-
-      <!-- Desktop App Download Section -->
-      <div class="download-section" style="margin-top: 24px; text-align: center; background: #0f121a; border: 1px solid var(--card-border); border-radius: 8px; padding: 16px;">
-        <p style="font-size: 14px; font-weight: 600; margin-bottom: 6px; color: #ffffff;">Windows Desktop App</p>
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
-          Starts in system tray, runs in background with auto-start. Double-click setup to install.
-        </p>
-        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-          <a id="btnDownloadWin" href="/download/windows" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; padding: 10px 16px; font-size: 13px; font-weight: 600; border-radius: 6px;">
-            <span>🪟</span> Direct Download (.exe)
-          </a>
-          <a href="https://github.com/Chetantupe0303/pulse-ctrl/releases" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none; padding: 10px 14px; font-size: 13px; font-weight: 600; border-radius: 6px;">
-            <span>📦</span> GitHub Releases ↗
-          </a>
-        </div>
-      </div>
     </main>
   </div>
-
-  <!-- "Allow Device?" Modal Prompt (Zero Laptop Info Leaked, Clean Device Name Only) -->
   <div id="allowModal" class="modal-overlay">
     <div class="modal-card">
-      <h2 class="modal-title">Allow Connection?</h2>
-      <p class="modal-desc" style="font-size: 14px; margin-bottom: 24px;">
-        Connect <strong id="modalDeviceName" style="color: #ffffff;">Mobile Device</strong> to control this laptop?
-      </p>
+      <h2 class="modal-title">Allow this device?</h2>
+      <p class="modal-desc">Allow <strong id="modalDeviceName">Mobile Device</strong> to control this laptop?</p>
       <div class="modal-actions">
         <button id="denyBtn" class="btn btn-danger">Deny</button>
         <button id="allowBtn" class="btn btn-primary">Allow</button>
       </div>
     </div>
   </div>
-
   <script src="laptop.js"></script>
 </body>
 </html>

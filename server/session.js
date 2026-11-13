@@ -34,6 +34,7 @@ class Session {
   constructor(sessionId, token) {
     this.id = sessionId;
     this.token = token; // One-time pairing token
+    this.approvalToken = crypto.randomBytes(32).toString('hex');
     this.tokenUsed = false;
     this.reconnectToken = null; // Secret token issued upon pairing to allow seamless reconnection
 
@@ -43,7 +44,7 @@ class Session {
     this.pendingPhoneWs = null;
 
     this.status = 'waiting'; // 'waiting' | 'pending_approval' | 'connected' | 'disconnected'
-    this.mode = 'trackpad'; // 'trackpad' | 'both'
+    this.mode = 'trackpad'; // 'trackpad' | 'keyboard' | 'both'
     this.deviceName = 'Mobile Device';
 
     this.createdAt = Date.now();
@@ -105,12 +106,8 @@ class SessionManager {
   constructor() {
     /** @type {Map<string, Session>} */
     this.sessions = new Map();
-    /** Active helper session ID for quick laptop page pairing */
-    this.latestHelperSessionId = null;
-    /** Callback invoked when a session disconnects, allowing instant re-provisioning */
+    /** Callback invoked after a session ends. */
     this.onSessionDisconnect = null;
-    /** Broadcast handler to send messages to all active laptop web clients */
-    this.broadcastToLaptop = null;
   }
 
   /**
@@ -134,7 +131,6 @@ class SessionManager {
     session.helperWs = helperWs;
 
     this.sessions.set(sessionId, session);
-    this.latestHelperSessionId = sessionId;
 
     // Start 2-minute unpaired expiration timer
     session.startUnpairedTimer((expiredId, reason) => {
@@ -153,24 +149,13 @@ class SessionManager {
     return this.sessions.get(sessionId) || null;
   }
 
-  /**
-   * Finds the active session for a helper or laptop web client.
-   * @returns {Session|null}
-   */
-  getLatestActiveSession() {
-    if (this.latestHelperSessionId) {
-      const session = this.sessions.get(this.latestHelperSessionId);
-      if (session && session.status !== 'disconnected') {
-        return session;
-      }
-    }
-    // Fallback: search for first non-disconnected session
-    for (const session of this.sessions.values()) {
-      if (session.status !== 'disconnected') {
-        return session;
-      }
-    }
-    return null;
+  validateLaptopPage(sessionId, approvalToken) {
+    const session = this.getSession(sessionId);
+    if (!session || !approvalToken) return null;
+    const expected = Buffer.from(session.approvalToken, 'utf8');
+    const provided = Buffer.from(approvalToken, 'utf8');
+    if (expected.length !== provided.length || !crypto.timingSafeEqual(expected, provided)) return null;
+    return session;
   }
 
   /**
@@ -206,7 +191,7 @@ class SessionManager {
       return { valid: false, error: 'Session has ended. Please scan the new QR code.' };
     }
 
-    if (session.tokenUsed) {
+    if (session.tokenUsed || session.pendingPhoneWs || session.phoneWs) {
       return { valid: false, error: 'Pairing token has already been used. Please scan the new QR code.' };
     }
 
@@ -240,7 +225,9 @@ class SessionManager {
       return { valid: false, error: 'Session expired or closed. Please scan again.' };
     }
 
-    if (!session.reconnectToken || session.reconnectToken !== reconnectToken) {
+    const expected = Buffer.from(session.reconnectToken || '', 'utf8');
+    const provided = Buffer.from(reconnectToken, 'utf8');
+    if (!session.reconnectToken || expected.length !== provided.length || !crypto.timingSafeEqual(expected, provided)) {
       return { valid: false, error: 'Invalid reconnection token. Please scan again.' };
     }
 
@@ -261,23 +248,19 @@ class SessionManager {
     const deviceName = parseDeviceName(userAgent);
     session.deviceName = deviceName;
 
-    // If an existing pending socket was attached, close it cleanly
-    if (session.pendingPhoneWs && session.pendingPhoneWs !== phoneWs && session.pendingPhoneWs.readyState === 1) {
-      session.pendingPhoneWs.close(1000, 'Replaced by newer connection');
-    }
+    // Claim the one-time QR token as soon as the phone asks for approval.
+    session.tokenUsed = true;
     session.pendingPhoneWs = phoneWs;
     session.status = 'pending_approval';
 
-    // Notify laptop web UI with clean device name only (broadcast to all open laptop tabs)
+    // Notify only the laptop page bound to this session.
     const pairRequestMsg = JSON.stringify({
       type: 'pair_request',
       sessionId: session.id,
       deviceName: deviceName
     });
 
-    if (typeof this.broadcastToLaptop === 'function') {
-      this.broadcastToLaptop(pairRequestMsg);
-    } else if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
+    if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
       session.laptopWebWs.send(pairRequestMsg);
     }
 
@@ -297,14 +280,14 @@ class SessionManager {
    */
   handleApprovalResponse(sessionId, allow) {
     const session = this.getSession(sessionId);
-    if (!session) return;
+    if (!session || session.status !== 'pending_approval' || !session.pendingPhoneWs) return;
 
     const phoneWs = session.pendingPhoneWs;
 
     if (!allow) {
       // Denied
       session.pendingPhoneWs = null;
-      session.status = 'waiting';
+      session.status = 'disconnected';
 
       if (phoneWs && phoneWs.readyState === 1) {
         phoneWs.send(JSON.stringify({
@@ -314,16 +297,12 @@ class SessionManager {
         phoneWs.close(4003, 'Denied by laptop');
       }
 
-      const deniedMsg = JSON.stringify({
-        type: 'status',
-        status: 'waiting',
-        message: 'Device connection denied'
-      });
-      if (typeof this.broadcastToLaptop === 'function') {
-        this.broadcastToLaptop(deniedMsg);
-      } else if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
-        session.laptopWebWs.send(deniedMsg);
+      if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
+        session.laptopWebWs.send(JSON.stringify({ type: 'status', status: 'disconnected', message: 'Device connection denied' }));
       }
+      session.clearTimers();
+      this.sessions.delete(session.id);
+      if (typeof this.onSessionDisconnect === 'function') this.onSessionDisconnect(session);
       return;
     }
 
@@ -356,16 +335,14 @@ class SessionManager {
       }));
     }
 
-    // Notify laptop web UI (broadcast to all open laptop tabs)
+    // Notify only the laptop page bound to this session.
     const connectedMsg = JSON.stringify({
       type: 'status',
       status: 'connected',
       mode: session.mode,
       deviceName: session.deviceName
     });
-    if (typeof this.broadcastToLaptop === 'function') {
-      this.broadcastToLaptop(connectedMsg);
-    } else if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
+    if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
       session.laptopWebWs.send(connectedMsg);
     }
 
@@ -386,6 +363,8 @@ class SessionManager {
    * @param {WebSocket} phoneWs
    */
   resumePhoneConnection(session, phoneWs) {
+    // Rotate the reconnect credential so the credential just used cannot be reused.
+    session.reconnectToken = crypto.randomBytes(16).toString('hex');
     session.phoneWs = phoneWs;
     session.status = 'connected';
 
@@ -410,9 +389,7 @@ class SessionManager {
       mode: session.mode,
       deviceName: session.deviceName
     });
-    if (typeof this.broadcastToLaptop === 'function') {
-      this.broadcastToLaptop(resumedMsg);
-    } else if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
+    if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
       session.laptopWebWs.send(resumedMsg);
     }
   }
@@ -440,9 +417,7 @@ class SessionManager {
       session.pendingPhoneWs.close(4001, reason);
     }
 
-    if (typeof this.broadcastToLaptop === 'function') {
-      this.broadcastToLaptop(expireMsg);
-    } else if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
+    if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
       session.laptopWebWs.send(expireMsg);
     }
 
@@ -450,9 +425,6 @@ class SessionManager {
     const laptopWebWs = session.laptopWebWs;
 
     this.sessions.delete(sessionId);
-    if (this.latestHelperSessionId === sessionId) {
-      this.latestHelperSessionId = null;
-    }
 
     // Trigger auto-reset so a new QR is ready immediately
     if (typeof this.onSessionDisconnect === 'function') {
@@ -487,9 +459,7 @@ class SessionManager {
       session.pendingPhoneWs.close(1000, `Disconnected by ${initiatedBy}`);
     }
 
-    if (typeof this.broadcastToLaptop === 'function') {
-      this.broadcastToLaptop(disconnectMsg);
-    } else if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
+    if (session.laptopWebWs && session.laptopWebWs.readyState === 1) {
       session.laptopWebWs.send(disconnectMsg);
     }
 
@@ -497,9 +467,6 @@ class SessionManager {
     const laptopWebWs = session.laptopWebWs;
 
     this.sessions.delete(sessionId);
-    if (this.latestHelperSessionId === sessionId) {
-      this.latestHelperSessionId = null;
-    }
 
     // Trigger auto-reset callback
     if (typeof this.onSessionDisconnect === 'function') {

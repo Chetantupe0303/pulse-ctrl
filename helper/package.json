@@ -1,0 +1,10 @@
+{
+  "name": "pulse-ctrl-helper",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node index.js",
+    "helper": "node index.js",
+    "start:helper": "node index.js"
+  }
+}
