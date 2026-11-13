@@ -1,62 +1,58 @@
 # PulseCtrl
 
-PulseCtrl turns a phone into a trackpad and keyboard for a laptop over the same Wi-Fi network. The HTTP server and input helper run on the laptop; pairing and control stay on the local network.
+### Your laptop, one tap away.
 
-## Requirements
+PulseCtrl turns your phone into a wireless trackpad and keyboard for your laptop. Both devices connect over your local Wi-Fi; the laptop asks you to approve a phone before it can control anything.
 
-- Node.js 18 or newer
-- A laptop and phone connected to the same Wi-Fi network
+## Get ready
 
-## Install
+- Install [Node.js 18 or newer](https://nodejs.org/).
+- Connect your laptop and phone to the same Wi-Fi network.
+- Open a terminal in the PulseCtrl project folder and install dependencies:
 
 ```bash
 npm install
 ```
 
-## Run
+## Start PulseCtrl
 
-Run both local processes together:
+Open **two terminals** in the project folder. The server and helper both need to stay running, so leave each terminal open while you use PulseCtrl.
 
-```bash
-npm run dev
-```
-
-Or use two terminals (from the root or inside `/server` and `/helper`):
+**Terminal 1 — start the server:**
 
 ```bash
-# Terminal 1: Server
-npm run start:server   # or: npm run server
-
-# Terminal 2: Helper
-npm run start:helper   # or: npm run helper
+cd server
+npm run server
 ```
 
-The server prints the laptop's local IP and port. The helper opens a session-specific laptop control page on the laptop. If it does not open automatically, copy the `Laptop Web` URL printed by the helper. If you use a custom port, set `PORT` to the same value for both processes.
+**Terminal 2 — start the laptop helper:**
 
-## Pair a phone over Wi-Fi
+```bash
+cd helper
+npm run helper
+```
 
-1. Keep the laptop and phone on the same Wi-Fi network. Allow local network access in the laptop firewall if prompted.
-2. Start the server and helper on the laptop, then open the laptop control page.
-3. Scan the QR code with the phone. It contains the laptop's detected local IP and a short lived, one-time session token.
-4. On the laptop, click **Allow** when **Allow this device?** appears. **Deny** closes the phone connection.
-5. Use the phone as a trackpad or keyboard. Click **Disconnect** on the laptop page to end the session immediately.
+The server displays your laptop's local IP and port. The helper opens the laptop control page; if it does not open automatically, use the `Laptop Web` URL it prints. If you set a custom port, use the same `PORT` value for both processes.
 
-An unused QR expires after 2 minutes, and an approved session disconnects after 15 minutes without activity. Each session accepts one phone, and a new QR code is created when a session ends.
+## Pair your phone
 
-## Test
+1. Keep both devices on the same Wi-Fi network. Allow local network access in your laptop firewall if prompted.
+2. Open the laptop control page and scan its QR code with your phone.
+3. Approve the request on the laptop when **Allow this device?** appears. Choose **Deny** to refuse it.
+4. Use the phone as a trackpad or keyboard. Choose **Disconnect** on the laptop to end the session.
 
-Run the local integration checks:
+Each QR code works once and expires after 2 minutes. Approved sessions end after 15 minutes without activity. Only one phone can connect per session; a fresh QR code appears when a session ends.
+
+## A note about permissions
+
+The helper uses your operating system's input APIs to move and click the cursor and type. macOS may ask you to grant Accessibility permission to the terminal or Node.js process running the helper.
+
+## Run the checks
 
 ```bash
 npm test
 npm run test:lifecycle
 ```
-
-For a phone check, follow the Wi-Fi pairing steps above and confirm that the phone only controls the laptop after approval. Test **Deny** and **Disconnect** as well.
-
-## Permissions
-
-The helper uses the operating system's input APIs to move and click the cursor and type. macOS may ask you to grant accessibility permission to the terminal or Node.js process running the helper.
 
 ## License
 
