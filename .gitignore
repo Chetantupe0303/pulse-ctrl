@@ -1,9 +1,5 @@
 node_modules
-dist
-*.exe
-.pulse-target.txt
 .DS_Store
 Thumbs.db
 *.log
 .pulse-config.json
-.pulse-port
